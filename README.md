@@ -2,7 +2,7 @@
 
 > A multilingual GenAI assistant for delivery partners, drivers and daily-wage workers. It helps them track earnings, stay safe, find welfare schemes, understand documents, and draft complaints, in 7 Indian languages (English, Hindi, Punjabi, Bengali, Marathi, Tamil, Telugu), by typing or speaking, with every answer readable aloud.
 
-**Live demo:** https://saathi-ai-companion.vercel.app · **Demo video:** https://VIDEO-LINK
+**Live demo:** https://saathi-gigworker-ai.vercel.app · **Demo video:** https://VIDEO-LINK
 
 ![Home](docs/screenshots/home-desktop.png)
 

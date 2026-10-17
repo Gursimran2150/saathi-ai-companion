@@ -10,8 +10,7 @@ export const POST = createStreamingHandler(grievanceRequestSchema, {
   task: "grievance",
   build: async (input, { user }) => {
     if (!input.attachEarnings) return grievancePrompt(input);
-    const since = daysAgo(29);
-    const recent = (await listEarnings(user.id, 60)).filter((e) => e.date >= since);
+    const recent = await listEarnings(user.id, 30, daysAgo(29));
     return grievancePrompt(input, recent.length ? formatLogForPrompt(recent, 30) : undefined);
   },
 });

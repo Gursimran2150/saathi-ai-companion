@@ -8,5 +8,5 @@ export const maxDuration = 60;
 /** Analyses the logged-in worker's own log, loaded server-side (never trusted from the client). */
 export const POST = createStreamingHandler(earningsInsightsRequestSchema, {
   task: "insights",
-  build: async (input, { user }) => earningsInsightsPrompt(input, await listEarnings(user.id, 120)),
+  build: async (input, { user }) => earningsInsightsPrompt(input, await listEarnings(user.id, 90)),
 });

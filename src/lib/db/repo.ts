@@ -67,9 +67,10 @@ export async function saveProfile(userId: string, profile: Profile): Promise<voi
     ON CONFLICT (user_id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`;
 }
 
-export async function listEarnings(userId: string, limit = 365): Promise<EarningEntry[]> {
+/** Newest first. `since` (YYYY-MM-DD) filters in SQL so only the needed rows leave the database. */
+export async function listEarnings(userId: string, limit = 365, since = "0001-01-01"): Promise<EarningEntry[]> {
   const result = await db()`
-    SELECT id, data FROM earnings WHERE user_id = ${userId}
+    SELECT id, data FROM earnings WHERE user_id = ${userId} AND date >= ${since}::date
     ORDER BY date DESC, created_at DESC LIMIT ${limit}`;
   return rows(earningRow, result).flatMap((r) => {
     const parsed = earningEntrySchema.safeParse({ ...r.data, id: r.id });

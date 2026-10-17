@@ -41,20 +41,29 @@ interface EarningsSummary {
   avgNetPerHour: number | null;
 }
 
-/** Totals for entries on or after `since` (YYYY-MM-DD). */
+/** Totals for entries on or after `since` (YYYY-MM-DD), computed in a single pass. */
 export function summarize(entries: readonly EarningEntry[], since?: string): EarningsSummary {
-  const inRange = since ? entries.filter((e) => e.date >= since) : entries;
-  const gross = inRange.reduce((s, e) => s + e.gross, 0);
-  const expenses = inRange.reduce((s, e) => s + totalExpenses(e), 0);
-  const hours = inRange.reduce((s, e) => s + (e.hours ?? 0), 0);
-  const days = new Set(inRange.map((e) => e.date)).size;
+  let gross = 0;
+  let expenses = 0;
+  let hours = 0;
+  let trips = 0;
+  const dates = new Set<string>();
+  for (const e of entries) {
+    if (since && e.date < since) continue;
+    gross += e.gross;
+    expenses += totalExpenses(e);
+    hours += e.hours ?? 0;
+    trips += e.trips ?? 0;
+    dates.add(e.date);
+  }
+  const days = dates.size;
   const net = gross - expenses;
   return {
     days,
     gross,
     expenses,
     net,
-    trips: inRange.reduce((s, e) => s + (e.trips ?? 0), 0),
+    trips,
     hours,
     avgNetPerDay: days ? Math.round(net / days) : 0,
     avgNetPerHour: hours ? Math.round(net / hours) : null,
@@ -94,25 +103,25 @@ export interface PlatformStats {
   netPerHour: number | null;
 }
 
-/** Take-home grouped by platform, best net-per-hour first, so workers can compare apps. */
+/** Take-home grouped by platform, best net-per-hour first, so workers can compare apps. O(n) grouping. */
 export function byPlatform(entries: readonly EarningEntry[]): PlatformStats[] {
   const groups = new Map<string, EarningEntry[]>();
   for (const e of entries) {
     const key = e.platform?.trim() || "Other";
-    groups.set(key, [...(groups.get(key) ?? []), e]);
+    const list = groups.get(key);
+    if (list) list.push(e);
+    else groups.set(key, [e]);
   }
-  return [...groups.entries()]
-    .map(([platform, list]) => {
-      const s = summarize(list);
-      return {
-        platform,
-        days: s.days,
-        trips: s.trips,
-        hours: s.hours,
-        net: s.net,
-        netPerTrip: s.trips ? Math.round(s.net / s.trips) : null,
-        netPerHour: s.avgNetPerHour,
-      };
-    })
-    .sort((a, b) => (b.netPerHour ?? -Infinity) - (a.netPerHour ?? -Infinity) || b.net - a.net);
+  return Array.from(groups, ([platform, list]) => {
+    const s = summarize(list);
+    return {
+      platform,
+      days: s.days,
+      trips: s.trips,
+      hours: s.hours,
+      net: s.net,
+      netPerTrip: s.trips ? Math.round(s.net / s.trips) : null,
+      netPerHour: s.avgNetPerHour,
+    };
+  }).sort((a, b) => (b.netPerHour ?? -Infinity) - (a.netPerHour ?? -Infinity) || b.net - a.net);
 }

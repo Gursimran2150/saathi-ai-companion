@@ -6,9 +6,12 @@ import { grievanceRequestSchema } from "@/lib/features/requests";
 
 export const maxDuration = 60;
 
-export const POST = createStreamingHandler(grievanceRequestSchema, async (input, { user }) => {
-  if (!input.attachEarnings) return grievancePrompt(input);
-  const since = daysAgo(29);
-  const recent = (await listEarnings(user.id, 60)).filter((e) => e.date >= since);
-  return grievancePrompt(input, recent.length ? formatLogForPrompt(recent, 30) : undefined);
+export const POST = createStreamingHandler(grievanceRequestSchema, {
+  task: "grievance",
+  build: async (input, { user }) => {
+    if (!input.attachEarnings) return grievancePrompt(input);
+    const since = daysAgo(29);
+    const recent = (await listEarnings(user.id, 60)).filter((e) => e.date >= since);
+    return grievancePrompt(input, recent.length ? formatLogForPrompt(recent, 30) : undefined);
+  },
 });

@@ -1,49 +1,49 @@
 import "server-only";
 import { streamText, type ModelMessage } from "ai";
 import type { z } from "zod";
-import { aiAbortSignal, aiErrorResponse, enforceRateLimit } from "@/lib/ai/guard";
-import { getModel } from "@/lib/ai/provider";
-import { requireUser } from "@/lib/auth/session";
+import { userRoute } from "@/lib/api/route";
 import type { SessionUser } from "@/lib/auth/token";
-import { parseJsonBody } from "@/lib/security/http";
+import { aiErrorResponse } from "./guard";
+import { cacheKey, createAnswerCache } from "./cache";
+import { getModel } from "./provider";
+import { aiCallSettings, type AiTask } from "./settings";
 
 export type StreamPrompt = { system: string } & ({ prompt: string } | { messages: ModelMessage[] });
 
-interface RouteContextData {
-  user: SessionUser;
+interface StreamOptions<T> {
+  task: AiTask;
+  /** Cache answers that depend only on the request (not on the user's private data). */
+  cacheable?: boolean;
+  build: (input: T, ctx: { user: SessionUser }) => StreamPrompt | Promise<StreamPrompt>;
 }
 
+const answers = createAnswerCache();
+const TEXT_HEADERS = { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } as const;
+
 /**
- * Builds a POST handler that authenticates, rate-limits per user, validates the body
- * with `schema`, then streams the model's answer to the prompt produced by `build`.
+ * Builds a POST handler that authenticates, rate-limits per user and validates the body,
+ * then streams the model's answer to the prompt produced by `build`.
  */
-export function createStreamingHandler<T>(
-  schema: z.ZodType<T>,
-  build: (input: T, ctx: RouteContextData) => StreamPrompt | Promise<StreamPrompt>,
-) {
-  return async function POST(request: Request): Promise<Response> {
-    const auth = await requireUser(request);
-    if (!auth.ok) return auth.response;
-
-    const limited = enforceRateLimit(request, auth.user.id);
-    if (limited) return limited;
-
-    const body = await parseJsonBody(request, schema);
-    if (!body.ok) return body.response;
+export function createStreamingHandler<T>(schema: z.ZodType<T>, { task, cacheable, build }: StreamOptions<T>) {
+  return userRoute({ body: schema, rateLimit: true }, async ({ request, body, user }) => {
+    const key = cacheable ? cacheKey(task, body) : undefined;
+    const hit = key && answers.get(key);
+    if (hit) return new Response(hit, { headers: { ...TEXT_HEADERS, "X-Cache": "HIT" } });
 
     try {
       const { model } = getModel();
-      const prompt = await build(body.data, { user: auth.user });
       const result = streamText({
         model,
-        ...prompt,
-        maxRetries: 2,
-        abortSignal: aiAbortSignal(request),
+        ...(await build(body, { user })),
+        ...aiCallSettings(request, task),
         onError: ({ error }) => console.error("[ai:stream]", error),
+        onFinish: ({ text, finishReason }) => {
+          if (key && finishReason === "stop" && text.trim()) answers.set(key, text);
+        },
       });
-      return result.toTextStreamResponse({ headers: { "Cache-Control": "no-store" } });
+      return result.toTextStreamResponse({ headers: TEXT_HEADERS });
     } catch (error) {
       return aiErrorResponse(error);
     }
-  };
+  });
 }

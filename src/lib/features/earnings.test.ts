@@ -1,12 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  daysAgo,
-  formatLogForPrompt,
-  netEarning,
-  summarize,
-  toIsoDate,
-  type EarningEntry,
-} from "./earnings";
+import { daysAgo, formatLogForPrompt, netEarning, summarize, toIsoDate, type EarningEntry } from "./earnings";
 
 const entry = (over: Partial<EarningEntry>): EarningEntry => ({
   id: "1",

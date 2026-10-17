@@ -1,7 +1,3 @@
-import { requireUser } from "@/lib/auth/session";
+import { NO_STORE, userRoute } from "@/lib/api/route";
 
-export async function GET(request: Request) {
-  const auth = await requireUser(request);
-  if (!auth.ok) return auth.response;
-  return Response.json({ user: auth.user }, { headers: { "Cache-Control": "private, no-store" } });
-}
+export const GET = userRoute({}, ({ user }) => Response.json({ user }, { headers: NO_STORE }));

@@ -4,4 +4,4 @@ import { documentRequestSchema } from "@/lib/features/requests";
 
 export const maxDuration = 60;
 
-export const POST = createStreamingHandler(documentRequestSchema, documentPrompt);
+export const POST = createStreamingHandler(documentRequestSchema, { task: "document", build: documentPrompt });

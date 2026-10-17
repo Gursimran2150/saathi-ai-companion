@@ -1,21 +1,12 @@
-import { requireUser } from "@/lib/auth/session";
+import { NO_STORE, userRoute } from "@/lib/api/route";
 import { getProfile, saveProfile } from "@/lib/db/repo";
 import { profileSchema } from "@/lib/profile";
-import { parseJsonBody } from "@/lib/security/http";
 
-const noStore = { "Cache-Control": "private, no-store" };
+export const GET = userRoute({}, async ({ user }) =>
+  Response.json({ profile: await getProfile(user.id) }, { headers: NO_STORE }),
+);
 
-export async function GET(request: Request) {
-  const auth = await requireUser(request);
-  if (!auth.ok) return auth.response;
-  return Response.json({ profile: await getProfile(auth.user.id) }, { headers: noStore });
-}
-
-export async function PUT(request: Request) {
-  const auth = await requireUser(request);
-  if (!auth.ok) return auth.response;
-  const body = await parseJsonBody(request, profileSchema);
-  if (!body.ok) return body.response;
-  await saveProfile(auth.user.id, body.data);
-  return Response.json({ profile: body.data }, { headers: noStore });
-}
+export const PUT = userRoute({ body: profileSchema }, async ({ user, body }) => {
+  await saveProfile(user.id, body);
+  return Response.json({ profile: body }, { headers: NO_STORE });
+});

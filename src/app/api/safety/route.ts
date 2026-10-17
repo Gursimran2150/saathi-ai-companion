@@ -4,4 +4,4 @@ import { safetyRequestSchema } from "@/lib/features/requests";
 
 export const maxDuration = 60;
 
-export const POST = createStreamingHandler(safetyRequestSchema, safetyPrompt);
+export const POST = createStreamingHandler(safetyRequestSchema, { task: "safety", build: safetyPrompt });

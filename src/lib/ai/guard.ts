@@ -23,11 +23,3 @@ export function aiErrorResponse(error: unknown): Response {
   console.error("[ai]", error);
   return jsonError(502, "The AI service is unavailable right now. Please try again.");
 }
-
-/** Upper bound for one AI request, so a stalled provider call fails cleanly instead of hanging the UI. */
-const AI_TIMEOUT_MS = 45_000;
-
-/** Aborts when the client disconnects or the AI time budget runs out, whichever comes first. */
-export function aiAbortSignal(request: Request): AbortSignal {
-  return AbortSignal.any([request.signal, AbortSignal.timeout(AI_TIMEOUT_MS)]);
-}

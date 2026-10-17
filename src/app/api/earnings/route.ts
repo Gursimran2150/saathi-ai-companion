@@ -1,20 +1,11 @@
-import { requireUser } from "@/lib/auth/session";
+import { NO_STORE, userRoute } from "@/lib/api/route";
 import { addEarning, listEarnings } from "@/lib/db/repo";
 import { extractedEarningSchema } from "@/lib/features/earnings";
-import { parseJsonBody } from "@/lib/security/http";
 
-const noStore = { "Cache-Control": "private, no-store" };
+export const GET = userRoute({}, async ({ user }) =>
+  Response.json({ entries: await listEarnings(user.id) }, { headers: NO_STORE }),
+);
 
-export async function GET(request: Request) {
-  const auth = await requireUser(request);
-  if (!auth.ok) return auth.response;
-  return Response.json({ entries: await listEarnings(auth.user.id) }, { headers: noStore });
-}
-
-export async function POST(request: Request) {
-  const auth = await requireUser(request);
-  if (!auth.ok) return auth.response;
-  const body = await parseJsonBody(request, extractedEarningSchema);
-  if (!body.ok) return body.response;
-  return Response.json({ entry: await addEarning(auth.user.id, body.data) }, { status: 201, headers: noStore });
-}
+export const POST = userRoute({ body: extractedEarningSchema }, async ({ user, body }) =>
+  Response.json({ entry: await addEarning(user.id, body) }, { status: 201, headers: NO_STORE }),
+);

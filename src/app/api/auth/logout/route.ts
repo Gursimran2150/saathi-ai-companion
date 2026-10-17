@@ -1,7 +1,6 @@
-import { clearSessionCookie, isSameOrigin } from "@/lib/auth/session";
-import { jsonError } from "@/lib/security/http";
+import { publicRoute } from "@/lib/api/route";
+import { clearSessionCookie } from "@/lib/auth/session";
 
-export async function POST(request: Request) {
-  if (!isSameOrigin(request)) return jsonError(403, "Cross-site request blocked.");
-  return Response.json({ ok: true }, { headers: { "Set-Cookie": clearSessionCookie() } });
-}
+export const POST = publicRoute({}, () =>
+  Response.json({ ok: true }, { headers: { "Set-Cookie": clearSessionCookie() } }),
+);

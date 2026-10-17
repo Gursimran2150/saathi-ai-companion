@@ -70,4 +70,3 @@ export const grievanceRequestSchema = z.object({
   workerName: z.string().trim().max(80).optional(),
   language: languageSchema,
 });
-

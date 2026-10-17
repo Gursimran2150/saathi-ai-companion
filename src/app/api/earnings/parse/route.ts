@@ -1,37 +1,27 @@
 import { generateText, Output } from "ai";
-import { aiAbortSignal, aiErrorResponse, enforceRateLimit } from "@/lib/ai/guard";
+import { userRoute } from "@/lib/api/route";
+import { aiErrorResponse } from "@/lib/ai/guard";
 import { wrapUserInput } from "@/lib/ai/prompts";
 import { getModel } from "@/lib/ai/provider";
+import { aiCallSettings } from "@/lib/ai/settings";
 import { extractedEarningSchema } from "@/lib/features/earnings";
 import { earningsParsePrompt } from "@/lib/features/prompts";
 import { earningsParseRequestSchema } from "@/lib/features/requests";
-import { requireUser } from "@/lib/auth/session";
-import { parseJsonBody } from "@/lib/security/http";
 
 export const maxDuration = 30;
 
 /** Turns a free-text or spoken note into a structured earnings entry. */
-export async function POST(request: Request) {
-  const auth = await requireUser(request);
-  if (!auth.ok) return auth.response;
-  const limited = enforceRateLimit(request, auth.user.id);
-  if (limited) return limited;
-
-  const body = await parseJsonBody(request, earningsParseRequestSchema);
-  if (!body.ok) return body.response;
-
+export const POST = userRoute({ body: earningsParseRequestSchema, rateLimit: true }, async ({ request, body }) => {
   try {
-    const { model } = getModel();
     const { output } = await generateText({
-      model,
-      system: earningsParsePrompt(body.data),
-      prompt: wrapUserInput(body.data.text),
+      model: getModel().model,
+      system: earningsParsePrompt(body),
+      prompt: wrapUserInput(body.text),
       output: Output.object({ schema: extractedEarningSchema }),
-      maxRetries: 2,
-      abortSignal: aiAbortSignal(request),
+      ...aiCallSettings(request, "extract"),
     });
     return Response.json({ entry: output }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return aiErrorResponse(error);
   }
-}
+});

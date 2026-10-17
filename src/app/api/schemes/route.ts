@@ -4,4 +4,8 @@ import { schemesRequestSchema } from "@/lib/features/requests";
 
 export const maxDuration = 60;
 
-export const POST = createStreamingHandler(schemesRequestSchema, schemesPrompt);
+export const POST = createStreamingHandler(schemesRequestSchema, {
+  task: "schemes",
+  cacheable: true,
+  build: schemesPrompt,
+});

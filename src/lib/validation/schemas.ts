@@ -14,4 +14,3 @@ export const chatRequestSchema = z.object({
   language: languageSchema,
   today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD"),
 });
-

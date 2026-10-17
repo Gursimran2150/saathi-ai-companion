@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   daysAgo,
   formatLogForPrompt,
-  isEarningsLog,
   netEarning,
   summarize,
   toIsoDate,
@@ -61,12 +60,6 @@ describe("dates", () => {
 });
 
 describe("log helpers", () => {
-  it("validates stored logs", () => {
-    expect(isEarningsLog([entry({})])).toBe(true);
-    expect(isEarningsLog([{ date: "x" }])).toBe(false);
-    expect(isEarningsLog("nope")).toBe(false);
-  });
-
   it("formats newest first with net values", () => {
     const text = formatLogForPrompt([entry({ id: "a", date: "2026-10-01" }), entry({ id: "b", date: "2026-10-05" })]);
     expect(text.split("\n")[0]).toContain("2026-10-05");

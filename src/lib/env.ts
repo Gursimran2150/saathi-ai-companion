@@ -12,7 +12,7 @@ const envSchema = z.object({
   AUTH_SECRET: z.string().min(32).optional(),
 });
 
-export type Env = z.infer<typeof envSchema>;
+type Env = z.infer<typeof envSchema>;
 
 let cached: Env | undefined;
 

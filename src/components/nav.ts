@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import type { StringKey } from "@/lib/strings";
 
-export interface NavItem {
+interface NavItem {
   href: string;
   key: StringKey;
   icon: LucideIcon;

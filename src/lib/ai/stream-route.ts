@@ -9,7 +9,7 @@ import { parseJsonBody } from "@/lib/security/http";
 
 export type StreamPrompt = { system: string } & ({ prompt: string } | { messages: ModelMessage[] });
 
-export interface RouteContextData {
+interface RouteContextData {
   user: SessionUser;
 }
 

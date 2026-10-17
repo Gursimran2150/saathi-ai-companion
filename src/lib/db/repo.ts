@@ -10,7 +10,7 @@ import { db } from "./client";
 
 /** All queries are parameterised tagged templates (no string-built SQL) and scoped by user id. */
 
-export interface UserRow {
+interface UserRow {
   id: string;
   email: string;
   name: string;
@@ -73,7 +73,7 @@ export async function deleteEarning(userId: string, id: string): Promise<boolean
   return rows.length > 0;
 }
 
-export interface ChatMessage {
+interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   content: string;

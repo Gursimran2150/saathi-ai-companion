@@ -1,4 +1,4 @@
-export interface RateLimitResult {
+interface RateLimitResult {
   allowed: boolean;
   remaining: number;
   /** Seconds until the caller may retry (0 when allowed). */

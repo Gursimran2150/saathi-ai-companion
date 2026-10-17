@@ -15,4 +15,3 @@ export const SECONDARY_BUTTON =
 export const INPUT = "h-12 rounded-xl px-4 text-base md:text-base";
 
 /** Small round icon badge used beside headings and in lists. */
-export const ICON_BADGE = "flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-pale text-primary";

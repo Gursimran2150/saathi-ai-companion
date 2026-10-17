@@ -22,12 +22,6 @@ export type ExtractedEarning = z.infer<typeof extractedEarningSchema>;
 export const earningEntrySchema = extractedEarningSchema.extend({ id: z.string().min(1).max(64) });
 export type EarningEntry = z.infer<typeof earningEntrySchema>;
 
-export const earningsLogSchema = z.array(earningEntrySchema).max(500);
-
-export function isEarningsLog(value: unknown): value is EarningEntry[] {
-  return earningsLogSchema.safeParse(value).success;
-}
-
 export function totalExpenses(entry: Pick<EarningEntry, "expenses">): number {
   return entry.expenses.reduce((sum, e) => sum + e.amount, 0);
 }
@@ -36,7 +30,7 @@ export function netEarning(entry: Pick<EarningEntry, "gross" | "expenses">): num
   return entry.gross - totalExpenses(entry);
 }
 
-export interface EarningsSummary {
+interface EarningsSummary {
   days: number;
   gross: number;
   expenses: number;

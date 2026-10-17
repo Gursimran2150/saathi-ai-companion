@@ -25,7 +25,7 @@ export function aiErrorResponse(error: unknown): Response {
 }
 
 /** Upper bound for one AI request, so a stalled provider call fails cleanly instead of hanging the UI. */
-export const AI_TIMEOUT_MS = 45_000;
+const AI_TIMEOUT_MS = 45_000;
 
 /** Aborts when the client disconnects or the AI time budget runs out, whichever comes first. */
 export function aiAbortSignal(request: Request): AbortSignal {

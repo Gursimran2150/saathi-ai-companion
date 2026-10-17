@@ -71,4 +71,3 @@ export const grievanceRequestSchema = z.object({
   language: languageSchema,
 });
 
-export type GrievanceRequest = z.infer<typeof grievanceRequestSchema>;

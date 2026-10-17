@@ -1,6 +1,6 @@
 /** Longest side, in pixels, that we send to the model; plenty for reading printed text. */
-export const MAX_IMAGE_EDGE = 1600;
-export const JPEG_QUALITY = 0.8;
+const MAX_IMAGE_EDGE = 1600;
+const JPEG_QUALITY = 0.8;
 
 /** Scales (width, height) down so the longest side is at most `maxEdge`. Never upscales. */
 export function fitWithin(width: number, height: number, maxEdge = MAX_IMAGE_EDGE) {

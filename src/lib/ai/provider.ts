@@ -5,7 +5,7 @@ import type { LanguageModel } from "ai";
 import { getEnv } from "@/lib/env";
 import { resolveProvider, type ProviderName } from "./resolve-provider";
 
-export interface ResolvedModel {
+interface ResolvedModel {
   provider: ProviderName;
   modelId: string;
   model: LanguageModel;

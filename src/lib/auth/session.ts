@@ -13,7 +13,7 @@ function readCookie(request: Request, name: string): string | undefined {
   return undefined;
 }
 
-export function getSessionUser(request: Request): Promise<SessionUser | null> {
+function getSessionUser(request: Request): Promise<SessionUser | null> {
   return verifySession(readCookie(request, SESSION_COOKIE), requireEnv("AUTH_SECRET"));
 }
 

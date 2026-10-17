@@ -48,7 +48,7 @@ const INLINE = /(\*\*[^*]+\*\*|\[[^\]\n]+\]\([^)\s]+\))/g;
 const LINK = /^\[([^\]\n]+)\]\(([^)\s]+)\)$/;
 
 /** Only absolute https URLs become links; anything else (javascript:, data:, relative) stays plain text. */
-export function safeHref(url: string): string | null {
+function safeHref(url: string): string | null {
   try {
     const parsed = new URL(url);
     return parsed.protocol === "https:" ? parsed.href : null;

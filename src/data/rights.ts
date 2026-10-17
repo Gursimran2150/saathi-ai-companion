@@ -3,7 +3,7 @@
  * The rights assistant is grounded on this text only. Kept general on purpose: the AI must
  * point workers to the right authority, not give case-specific legal advice.
  */
-export interface RightsTopic {
+interface RightsTopic {
   id: "deactivation" | "wages" | "accident" | "harassment" | "fraud" | "legalAid";
   title: string;
   facts: string[];

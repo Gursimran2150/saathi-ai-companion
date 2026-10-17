@@ -4,7 +4,27 @@
 
 **Live demo:** https://saathi-gigworker-ai.vercel.app
 
-> **Evaluator access:** tap **"Try instantly as a demo user"** on the login screen (creates a private, isolated test account), or log in with **`demo@saathi.app` / `saathi-demo-2026`**. · **Demo video:** https://VIDEO-LINK
+**Demo video:** https://VIDEO-LINK
+
+## Demo credentials
+
+| Option                         | How                                                                                                                                                                       |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **One-tap demo (recommended)** | On the login screen tap **"Try instantly as a demo user"**. It creates a fresh, private test account, so no email is needed and your data is isolated from other testers. |
+| **Shared demo account**        | Email **`demo@saathi.app`**, password **`saathi-demo-2026`**                                                                                                              |
+| **Your own account**           | Tap **"New here? Create an account"** (name, email, password of 8+ characters)                                                                                            |
+
+## How to use (5-minute walkthrough)
+
+1. **Log in** with the demo button. Pick your language from the 🌐 menu (7 languages); the whole UI switches.
+2. **Chat (home):** tap a suggestion or type/speak (🎙️) _"Today 14 deliveries on Swiggy, got ₹920, petrol ₹180"_. The AI **saves the entry for you** and replies with your take-home. Then ask _"How much did I earn this week?"_ or _"Which government schemes can I get?"_. Tap 🔊 on any answer to hear it.
+3. **Earnings:** see the entry the chat just saved, weekly stats, the 7-day chart and the platform comparison. Add another day with **Read my note** → **Save entry**, then tap **Get AI insights**.
+4. **Rights:** pick _"Account blocked without reason"_ → **Explain my rights**. You get your rights, the steps to take, and where to complain (with the 15100 free legal aid helpline).
+5. **Schemes:** enter age `25` and income `12000`. The matching real schemes appear instantly with official links; tap **Explain my schemes** for step-by-step help.
+6. **Safety:** choose a situation chip (e.g. heat wave) → **Get safety steps**. The red **SOS** button (top bar) calls 112, lists helplines and shares your live location.
+7. **Documents:** upload a photo of any notice, payslip or form → **Explain this document** → **Write a complaint about this** carries the summary to the complaint drafter.
+8. **Complaint:** the document summary is attached; tick _attach my earnings records_, fill who it is against → **Draft my complaint**. Copy, download or listen to the letter.
+9. Try **Theme** (light/dark/system) and **Large text** (A+) in the sidebar. **Log out** is next to your name.
 
 ![Home](docs/screenshots/home-desktop.png)
 

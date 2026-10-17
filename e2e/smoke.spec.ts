@@ -27,7 +27,8 @@ test("navigation reaches every tool", async ({ page }) => {
 test("language switch translates the UI", async ({ page }) => {
   await page.goto("/");
   await openMenuIfMobile(page);
-  await page.getByRole("combobox", { name: "Language" }).selectOption("hi");
+  await page.getByRole("button", { name: /^Language/ }).click();
+  await page.getByRole("menuitemradio", { name: /हिन्दी/ }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "hi");
   await expect(page.getByPlaceholder("साथी को लिखें…")).toBeVisible();
 });

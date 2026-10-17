@@ -1,32 +1,62 @@
 "use client";
 
-import { Languages } from "lucide-react";
-import { useId } from "react";
-import { LANGUAGES, isLanguageCode } from "@/lib/i18n";
+import { ChevronDown, Languages } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { getLanguage, isLanguageCode, LANGUAGES } from "@/lib/i18n";
 import { useLanguage } from "./LanguageProvider";
 
+/** Language picker: native script names, with the English name as a hint for helpers and evaluators. */
 export function LanguageSelect() {
-  const id = useId();
   const { language, setLanguage } = useLanguage();
+  const current = getLanguage(language);
 
   return (
-    <div className="relative flex items-center">
-      <label htmlFor={id} className="sr-only">
-        Language
-      </label>
-      <Languages className="pointer-events-none absolute left-3 size-4 text-muted-foreground" aria-hidden="true" />
-      <select
-        id={id}
-        value={language}
-        onChange={(e) => isLanguageCode(e.target.value) && setLanguage(e.target.value)}
-        className="min-h-11 cursor-pointer appearance-none rounded-full border border-border bg-background py-2 pl-9 pr-4 text-sm font-medium hover:border-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          className="h-11 gap-2 rounded-full px-4 text-sm font-medium"
+          aria-label={`Language: ${current.label}`}
+        >
+          <Languages className="size-4 text-muted-foreground" aria-hidden="true" />
+          {current.nativeLabel}
+          <ChevronDown className="size-4 text-muted-foreground" aria-hidden="true" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        sideOffset={8}
+        className="w-56 rounded-2xl p-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.12)]"
       >
-        {LANGUAGES.map((l) => (
-          <option key={l.code} value={l.code}>
-            {l.nativeLabel}
-          </option>
-        ))}
-      </select>
-    </div>
+        <DropdownMenuLabel className="px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Language
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuRadioGroup value={language} onValueChange={(v) => isLanguageCode(v) && setLanguage(v)}>
+          {LANGUAGES.map((l) => (
+            <DropdownMenuRadioItem
+              key={l.code}
+              value={l.code}
+              lang={l.code}
+              className="min-h-11 cursor-pointer rounded-xl py-2 pl-3 pr-9"
+            >
+              <span className="flex w-full items-center justify-between gap-3">
+                <span className="text-[0.95rem] font-medium">{l.nativeLabel}</span>
+                {l.code !== "en" && <span className="text-xs text-muted-foreground">{l.label}</span>}
+              </span>
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

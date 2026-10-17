@@ -173,4 +173,5 @@ export const pa: Dictionary = {
   "documents.formats": "JPG, PNG, WEBP ਜਾਂ PDF",
   "grievance.againstPlaceholder": "ਜਿਵੇਂ Swiggy / Zomato / Uber",
   "schemes.profile": "ਤੁਹਾਡੇ ਬਾਰੇ",
+  "sos.shareText": "ਮੈਨੂੰ ਮਦਦ ਚਾਹੀਦੀ ਹੈ। ਮੇਰੀ ਲੋਕੇਸ਼ਨ:",
 };

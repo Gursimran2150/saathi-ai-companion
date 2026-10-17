@@ -1,9 +1,8 @@
 "use client";
 
 import { Check, Copy, Download, Info, Volume2, VolumeX } from "lucide-react";
-import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { getLanguage } from "@/lib/i18n";
+import { toPlainText, useCopy, useSpeak } from "@/hooks/useAnswerActions";
 import { AiResponse } from "./AiResponse";
 import { useLanguage } from "./LanguageProvider";
 
@@ -20,47 +19,12 @@ const ACTION = "h-11 gap-2 rounded-full px-4 text-sm font-medium";
 /** AI answer with Listen (text-to-speech), Copy and optional Download actions. */
 export function AnswerPanel({ text, status, error, downloadName }: AnswerPanelProps) {
   const { t, language } = useLanguage();
-  const [copied, setCopied] = useState(false);
-  const [speaking, setSpeaking] = useState(false);
+  const { speaking, toggle: toggleSpeak } = useSpeak(text, language);
+  const { copied, copy } = useCopy(text);
   const ready = status === "done" && text.length > 0;
-  const plain = text.replaceAll("**", "");
-
-  useEffect(() => () => window.speechSynthesis?.cancel(), []);
-
-  useEffect(() => {
-    if (!copied) return;
-    const timer = setTimeout(() => setCopied(false), 2000);
-    return () => clearTimeout(timer);
-  }, [copied]);
-
-  function toggleSpeak() {
-    const synth = window.speechSynthesis;
-    if (!synth) return;
-    if (speaking) {
-      synth.cancel();
-      setSpeaking(false);
-      return;
-    }
-    const utterance = new SpeechSynthesisUtterance(plain);
-    utterance.lang = getLanguage(language).speechLocale;
-    utterance.onend = () => setSpeaking(false);
-    utterance.onerror = () => setSpeaking(false);
-    synth.cancel();
-    synth.speak(utterance);
-    setSpeaking(true);
-  }
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(plain);
-      setCopied(true);
-    } catch {
-      setCopied(false);
-    }
-  }
 
   function download() {
-    const url = URL.createObjectURL(new Blob([plain], { type: "text/plain;charset=utf-8" }));
+    const url = URL.createObjectURL(new Blob([toPlainText(text)], { type: "text/plain;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url;
     a.download = downloadName ?? "saathi.txt";

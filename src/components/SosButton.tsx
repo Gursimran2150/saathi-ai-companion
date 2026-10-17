@@ -20,7 +20,7 @@ export function SosButton({ className = "" }: { className?: string }) {
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
         const url = `https://maps.google.com/?q=${coords.latitude.toFixed(5)},${coords.longitude.toFixed(5)}`;
-        const text = `I need help. My location: ${url}`;
+        const text = `${t("sos.shareText")} ${url}`;
         setLocation("idle");
         if (navigator.share) await navigator.share({ title: "SOS", text }).catch(() => undefined);
         else window.location.href = `sms:?&body=${encodeURIComponent(text)}`;

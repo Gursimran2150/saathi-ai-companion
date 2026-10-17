@@ -28,3 +28,16 @@ describe("createRateLimiter", () => {
     expect(check("a").allowed).toBe(true);
   });
 });
+
+describe("createRateLimiter memory", () => {
+  it("sweeps expired clients once a window has passed", () => {
+    let t = 0;
+    const check = createRateLimiter(5, 1_000, () => t);
+    check("a");
+    check("b");
+    t = 2_000;
+    // After the sweep only the current caller remains tracked, so "a" starts a fresh window.
+    expect(check("c").remaining).toBe(4);
+    expect(check("a").remaining).toBe(4);
+  });
+});

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 
 const listeners = new Set<() => void>();
 
@@ -32,15 +32,16 @@ export function useLocalStorage<T>(key: string, initial: T, validate?: (value: u
     () => null,
   );
 
-  let value = initial;
-  if (raw !== null) {
+  // Parse only when the stored string changes, not on every render.
+  const value = useMemo(() => {
+    if (raw === null) return initial;
     try {
       const parsed: unknown = JSON.parse(raw);
-      if (!validate || validate(parsed)) value = parsed as T;
+      return !validate || validate(parsed) ? (parsed as T) : initial;
     } catch {
-      // keep initial
+      return initial;
     }
-  }
+  }, [raw, initial, validate]);
 
   const setValue = useCallback(
     (next: T) => {

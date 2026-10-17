@@ -173,4 +173,5 @@ export const te: Dictionary = {
   "documents.formats": "JPG, PNG, WEBP లేదా PDF",
   "grievance.againstPlaceholder": "ఉదా. Swiggy / Zomato / Uber",
   "schemes.profile": "మీ గురించి",
+  "sos.shareText": "నాకు సహాయం కావాలి. నా లొకేషన్:",
 };

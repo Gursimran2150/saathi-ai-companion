@@ -48,10 +48,21 @@ export function useStreamingText(endpoint: string) {
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let received = "";
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          received += decoder.decode(value, { stream: true });
+        // Render at most once per animation frame, however many tokens arrive in between.
+        let frame = 0;
+        const flush = () => {
+          frame = 0;
+          setText(received);
+        };
+        try {
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            received += decoder.decode(value, { stream: true });
+            frame ||= requestAnimationFrame(flush);
+          }
+        } finally {
+          cancelAnimationFrame(frame);
           setText(received);
         }
         if (!received.trim()) throw new Error("The AI returned an empty answer. Please try again.");

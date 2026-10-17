@@ -172,6 +172,7 @@ export const en = {
   "documents.formats": "JPG, PNG, WEBP or PDF",
   "grievance.againstPlaceholder": "e.g. Swiggy / Zomato / Uber",
   "schemes.profile": "About you",
+  "sos.shareText": "I need help. My location:",
 };
 
 export type StringKey = keyof typeof en;

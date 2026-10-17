@@ -173,4 +173,5 @@ export const bn: Dictionary = {
   "documents.formats": "JPG, PNG, WEBP বা PDF",
   "grievance.againstPlaceholder": "যেমন Swiggy / Zomato / Uber",
   "schemes.profile": "আপনার সম্পর্কে",
+  "sos.shareText": "আমার সাহায্য দরকার। আমার লোকেশন:",
 };

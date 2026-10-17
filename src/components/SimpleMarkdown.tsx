@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode } from "react";
+import { Fragment, memo, useMemo, type ReactNode } from "react";
 
 type Block =
   | { kind: "heading"; text: string }
@@ -88,10 +88,12 @@ function inline(text: string): ReactNode[] {
   });
 }
 
-export function SimpleMarkdown({ text }: { text: string }) {
+/** Memoised: past chat messages don't re-render, and parsing only reruns when the text changes. */
+export const SimpleMarkdown = memo(function SimpleMarkdown({ text }: { text: string }) {
+  const blocks = useMemo(() => parseBlocks(text), [text]);
   return (
     <div className="flex flex-col gap-3 text-[0.975rem] leading-7 break-words">
-      {parseBlocks(text).map((block, i) => {
+      {blocks.map((block, i) => {
         switch (block.kind) {
           case "heading":
             return (
@@ -126,4 +128,4 @@ export function SimpleMarkdown({ text }: { text: string }) {
       })}
     </div>
   );
-}
+});

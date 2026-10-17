@@ -37,6 +37,7 @@ export function LanguageSelect() {
         sideOffset={8}
         className="w-56 rounded-2xl p-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.12)]"
       >
+        {/* Kept in English on purpose: someone stuck in an unfamiliar language can still find this control. */}
         <DropdownMenuLabel className="px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Language
         </DropdownMenuLabel>

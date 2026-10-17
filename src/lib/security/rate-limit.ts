@@ -11,15 +11,18 @@ interface RateLimitResult {
  */
 export function createRateLimiter(limit: number, windowMs = 60_000, now: () => number = Date.now) {
   const hits = new Map<string, { count: number; resetAt: number }>();
+  let nextSweep = now() + windowMs;
 
   return function check(key: string): RateLimitResult {
     const t = now();
+    // Drop expired windows at most once per window, so memory stays bounded by active clients.
+    if (t >= nextSweep) {
+      for (const [k, v] of hits) if (v.resetAt <= t) hits.delete(k);
+      nextSweep = t + windowMs;
+    }
     const entry = hits.get(key);
 
     if (!entry || entry.resetAt <= t) {
-      if (hits.size > 10_000) {
-        for (const [k, v] of hits) if (v.resetAt <= t) hits.delete(k);
-      }
       hits.set(key, { count: 1, resetAt: t + windowMs });
       return { allowed: true, remaining: limit - 1, retryAfter: 0 };
     }

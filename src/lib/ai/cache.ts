@@ -29,7 +29,10 @@ export function createAnswerCache(maxEntries = 200, ttlMs = 60 * 60 * 1000, now:
     set(key: string, value: string): void {
       entries.delete(key);
       entries.set(key, { value, expiresAt: now() + ttlMs });
-      if (entries.size > maxEntries) entries.delete(entries.keys().next().value!);
+      if (entries.size > maxEntries) {
+        const oldest = entries.keys().next();
+        if (!oldest.done) entries.delete(oldest.value);
+      }
     },
     get size() {
       return entries.size;

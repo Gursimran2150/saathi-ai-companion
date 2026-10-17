@@ -1,4 +1,5 @@
 import "server-only";
+import { z } from "zod";
 import {
   earningEntrySchema,
   extractedEarningSchema,
@@ -8,20 +9,36 @@ import {
 import { DEFAULT_PROFILE, profileSchema, type Profile } from "@/lib/profile";
 import { db } from "./client";
 
-/** All queries are parameterised tagged templates (no string-built SQL) and scoped by user id. */
+/**
+ * All queries are parameterised tagged templates (no string-built SQL) and scoped by user id.
+ * Rows are validated with zod on the way out, so the rest of the app never trusts raw DB shapes.
+ */
 
-interface UserRow {
-  id: string;
-  email: string;
-  name: string;
-  password_hash: string;
-  is_demo: boolean;
-}
+const userRow = z.object({
+  id: z.string(),
+  email: z.string(),
+  name: z.string(),
+  password_hash: z.string(),
+  is_demo: z.boolean(),
+});
+type UserRow = z.infer<typeof userRow>;
+
+const idRow = z.object({ id: z.string() });
+const earningRow = z.object({ id: z.string(), data: z.record(z.string(), z.unknown()) });
+
+const chatRow = z.object({
+  id: z.coerce.number(),
+  role: z.enum(["user", "assistant"]),
+  content: z.string(),
+});
+type ChatMessage = z.infer<typeof chatRow>;
+
+/** Parses query results into typed rows (throws on schema drift instead of failing silently later). */
+const rows = <S extends z.ZodType>(schema: S, result: unknown): z.infer<S>[] => z.array(schema).parse(result);
 
 export async function findUserByEmail(email: string): Promise<UserRow | null> {
-  const rows =
-    (await db()`SELECT id, email, name, password_hash, is_demo FROM users WHERE email = ${email}`) as UserRow[];
-  return rows[0] ?? null;
+  const result = await db()`SELECT id, email, name, password_hash, is_demo FROM users WHERE email = ${email}`;
+  return rows(userRow, result)[0] ?? null;
 }
 
 export async function createUser(input: {
@@ -30,17 +47,17 @@ export async function createUser(input: {
   passwordHash: string;
   isDemo?: boolean;
 }): Promise<UserRow | null> {
-  const rows = (await db()`
+  const result = await db()`
     INSERT INTO users (email, name, password_hash, is_demo)
     VALUES (${input.email}, ${input.name}, ${input.passwordHash}, ${input.isDemo ?? false})
     ON CONFLICT (email) DO NOTHING
-    RETURNING id, email, name, password_hash, is_demo`) as UserRow[];
-  return rows[0] ?? null;
+    RETURNING id, email, name, password_hash, is_demo`;
+  return rows(userRow, result)[0] ?? null;
 }
 
 export async function getProfile(userId: string): Promise<Profile> {
-  const rows = (await db()`SELECT data FROM profiles WHERE user_id = ${userId}`) as { data: unknown }[];
-  const parsed = profileSchema.safeParse(rows[0]?.data);
+  const [row] = rows(z.object({ data: z.unknown() }), await db()`SELECT data FROM profiles WHERE user_id = ${userId}`);
+  const parsed = profileSchema.safeParse(row?.data);
   return parsed.success ? parsed.data : DEFAULT_PROFILE;
 }
 
@@ -51,39 +68,36 @@ export async function saveProfile(userId: string, profile: Profile): Promise<voi
 }
 
 export async function listEarnings(userId: string, limit = 365): Promise<EarningEntry[]> {
-  const rows = (await db()`
+  const result = await db()`
     SELECT id, data FROM earnings WHERE user_id = ${userId}
-    ORDER BY date DESC, created_at DESC LIMIT ${limit}`) as { id: string; data: unknown }[];
-  return rows.flatMap((r) => {
-    const parsed = earningEntrySchema.safeParse({ ...(r.data as object), id: r.id });
+    ORDER BY date DESC, created_at DESC LIMIT ${limit}`;
+  return rows(earningRow, result).flatMap((r) => {
+    const parsed = earningEntrySchema.safeParse({ ...r.data, id: r.id });
     return parsed.success ? [parsed.data] : [];
   });
 }
 
 export async function addEarning(userId: string, entry: ExtractedEarning): Promise<EarningEntry> {
   const data = extractedEarningSchema.parse(entry);
-  const rows = (await db()`
+  const [row] = rows(
+    idRow,
+    await db()`
     INSERT INTO earnings (user_id, date, data) VALUES (${userId}, ${data.date}, ${JSON.stringify(data)})
-    RETURNING id`) as { id: string }[];
-  return { ...data, id: rows[0].id };
+    RETURNING id`,
+  );
+  return { ...data, id: row.id };
 }
 
 export async function deleteEarning(userId: string, id: string): Promise<boolean> {
-  const rows = (await db()`DELETE FROM earnings WHERE id = ${id} AND user_id = ${userId} RETURNING id`) as unknown[];
-  return rows.length > 0;
-}
-
-interface ChatMessage {
-  id: number;
-  role: "user" | "assistant";
-  content: string;
+  const result = await db()`DELETE FROM earnings WHERE id = ${id} AND user_id = ${userId} RETURNING id`;
+  return rows(idRow, result).length > 0;
 }
 
 export async function listChat(userId: string, limit = 40): Promise<ChatMessage[]> {
-  const rows = (await db()`
+  const result = await db()`
     SELECT id, role, content FROM chat_messages WHERE user_id = ${userId}
-    ORDER BY id DESC LIMIT ${limit}`) as ChatMessage[];
-  return rows.reverse().map((r) => ({ ...r, id: Number(r.id) }));
+    ORDER BY id DESC LIMIT ${limit}`;
+  return rows(chatRow, result).reverse();
 }
 
 /** Inserts a whole turn in one round-trip (arrays are unnested server-side, order preserved). */

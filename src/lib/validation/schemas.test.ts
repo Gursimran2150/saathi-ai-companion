@@ -3,7 +3,11 @@ import { chatRequestSchema, MAX_MESSAGE_LENGTH } from "./schemas";
 
 describe("chatRequestSchema", () => {
   it("accepts a valid request and defaults the language", () => {
-    expect(chatRequestSchema.parse({ message: "  hi  " })).toEqual({ message: "hi", language: "en" });
+    expect(chatRequestSchema.parse({ message: "  hi  ", today: "2026-10-17" })).toEqual({
+      message: "hi",
+      language: "en",
+      today: "2026-10-17",
+    });
   });
 
   it.each([

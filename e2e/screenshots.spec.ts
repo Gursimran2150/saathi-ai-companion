@@ -21,6 +21,8 @@ test.describe("screenshots", () => {
   for (const shot of SHOTS) {
     test(shot.name, async ({ page }, info) => {
       await page.goto(shot.path);
+      await page.waitForLoadState("networkidle");
+      await page.waitForTimeout(400);
       await page.screenshot({ path: `docs/screenshots/${shot.name}-${info.project.name}.png`, fullPage: true });
     });
   }

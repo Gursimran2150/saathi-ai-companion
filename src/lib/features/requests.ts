@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { earningsLogSchema } from "@/lib/features/earnings";
 import { profileSchema, workTypeSchema } from "@/lib/profile";
 import { languageSchema } from "@/lib/validation/schemas";
 
@@ -13,7 +12,6 @@ export const earningsParseRequestSchema = z.object({
 });
 
 export const earningsInsightsRequestSchema = z.object({
-  entries: earningsLogSchema.min(1, "Add at least one entry first."),
   today: isoDate,
   language: languageSchema,
 });
@@ -67,7 +65,7 @@ export const grievanceRequestSchema = z.object({
   issueType: z.enum(GRIEVANCE_TYPES),
   against: text(100),
   details: text(2000),
-  earningsEvidence: z.string().max(4000).optional(),
+  attachEarnings: z.boolean().default(false),
   documentEvidence: z.string().max(4000).optional(),
   workerName: z.string().trim().max(80).optional(),
   language: languageSchema,

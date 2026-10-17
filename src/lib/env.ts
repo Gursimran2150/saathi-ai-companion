@@ -8,6 +8,8 @@ const envSchema = z.object({
   GEMINI_MODEL: z.string().min(1).default("gemini-3.5-flash"),
   OPENAI_MODEL: z.string().min(1).default("gpt-5.4-mini"),
   RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(20),
+  DATABASE_URL: z.string().url().optional(),
+  AUTH_SECRET: z.string().min(32).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -18,4 +20,10 @@ let cached: Env | undefined;
 export function getEnv(): Env {
   cached ??= envSchema.parse(process.env);
   return cached;
+}
+
+export function requireEnv<K extends "DATABASE_URL" | "AUTH_SECRET">(key: K): string {
+  const value = getEnv()[key];
+  if (!value) throw new Error(`${key} is not configured`);
+  return value;
 }

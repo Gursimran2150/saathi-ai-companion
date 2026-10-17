@@ -12,6 +12,7 @@ export const chatRequestSchema = z.object({
     .min(1, "Message cannot be empty.")
     .max(MAX_MESSAGE_LENGTH, `Message must be under ${MAX_MESSAGE_LENGTH} characters.`),
   language: languageSchema,
+  today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD"),
 });
 
 export type ChatRequest = z.infer<typeof chatRequestSchema>;

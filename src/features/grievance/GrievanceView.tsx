@@ -1,22 +1,50 @@
 "use client";
 
-import { useCallback, useId, useState, type FormEvent } from "react";
+import {
+  Ban,
+  CircleHelp,
+  FileText,
+  HandCoins,
+  HeartPulse,
+  PenLine,
+  ShieldAlert,
+  WalletCards,
+  X,
+  type LucideIcon,
+} from "lucide-react";
+import { useId, useMemo, useState, type FormEvent } from "react";
 import { AnswerPanel } from "@/components/AnswerPanel";
+import { ActionBar, SubmitOrStop } from "@/components/feature/ActionBar";
+import { ChoiceChip } from "@/components/feature/ChoiceChip";
+import { Panel } from "@/components/feature/Panel";
+import { PromptField } from "@/components/feature/PromptField";
+import { FEATURE_CONTAINER, INPUT } from "@/components/feature/styles";
 import { useLanguage } from "@/components/LanguageProvider";
-import { MicButton } from "@/components/MicButton";
-import { useEarningsLog } from "@/hooks/useAppData";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useEarnings } from "@/hooks/useAppData";
 import { useDocumentHandoff } from "@/hooks/useHandoff";
 import { useStreamingText } from "@/hooks/useStreamingText";
 import { useToday } from "@/hooks/useToday";
-import { daysAgo, formatLogForPrompt } from "@/lib/features/earnings";
+import { daysAgo } from "@/lib/features/earnings";
 import { GRIEVANCE_TYPES } from "@/lib/features/requests";
 
 type IssueType = (typeof GRIEVANCE_TYPES)[number];
 
+const ISSUE_ICONS: Record<IssueType, LucideIcon> = {
+  unpaid_payout: WalletCards,
+  account_deactivation: Ban,
+  accident_or_injury: HeartPulse,
+  wage_theft: HandCoins,
+  harassment: ShieldAlert,
+  other: CircleHelp,
+};
+
 export function GrievanceView() {
   const { t, language } = useLanguage();
-  const ids = { type: useId(), against: useId(), details: useId(), name: useId(), attach: useId() };
-  const [log] = useEarningsLog();
+  const ids = { against: useId(), details: useId(), name: useId(), attach: useId() };
+  const { entries } = useEarnings();
   const [documentEvidence, setDocumentEvidence] = useDocumentHandoff();
   const [issueType, setIssueType] = useState<IssueType>("unpaid_payout");
   const [against, setAgainst] = useState("");
@@ -25,10 +53,13 @@ export function GrievanceView() {
   const [attach, setAttach] = useState(true);
   const { text, status, error, run, stop, isStreaming } = useStreamingText("/api/grievance");
 
+  // Only the count is needed here: the server loads the last 30 days itself when attachEarnings is true.
   const today = useToday();
-  const since = today ? daysAgo(29, new Date(`${today}T12:00:00`)) : null;
-  const recent = since ? log.filter((e) => e.date >= since) : [];
-  const appendTranscript = useCallback((s: string) => setDetails((v) => (v ? `${v} ${s}` : s)), []);
+  const recentCount = useMemo(() => {
+    if (!today) return 0;
+    const since = daysAgo(29, new Date(`${today}T12:00:00`));
+    return entries.filter((e) => e.date >= since).length;
+  }, [entries, today]);
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -38,117 +69,119 @@ export function GrievanceView() {
       against,
       details,
       workerName: workerName || undefined,
-      earningsEvidence: attach && recent.length ? formatLogForPrompt(recent, 30).slice(0, 4000) : undefined,
+      attachEarnings: attach && recentCount > 0,
       documentEvidence: documentEvidence || undefined,
       language,
     });
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <form onSubmit={onSubmit} className="card grid gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor={ids.type} className="field-label">
-            {t("grievance.type")}
-          </label>
-          <select
-            id={ids.type}
-            value={issueType}
-            onChange={(e) => {
-              const v = GRIEVANCE_TYPES.find((g) => g === e.target.value);
-              if (v) setIssueType(v);
-            }}
-            className="input"
-          >
-            {GRIEVANCE_TYPES.map((g) => (
-              <option key={g} value={g}>
-                {t(`issue.${g}`)}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor={ids.against} className="field-label">
-            {t("grievance.against")}
-          </label>
-          <input
-            id={ids.against}
-            value={against}
-            maxLength={100}
-            required
-            onChange={(e) => setAgainst(e.target.value)}
-            placeholder="Swiggy / Zomato / Uber / Contractor"
-            className="input"
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <label htmlFor={ids.details} className="field-label">
-            {t("grievance.details")}
-          </label>
-          <div className="flex gap-2">
-            <textarea
-              id={ids.details}
-              value={details}
-              maxLength={2000}
-              rows={4}
-              required
-              onChange={(e) => setDetails(e.target.value)}
-              placeholder={t("grievance.detailsPlaceholder")}
-              className="input"
-            />
-            <MicButton onTranscript={appendTranscript} />
-          </div>
-        </div>
-        <div>
-          <label htmlFor={ids.name} className="field-label">
-            {t("grievance.name")}
-          </label>
-          <input
-            id={ids.name}
-            value={workerName}
-            maxLength={80}
-            autoComplete="name"
-            onChange={(e) => setWorkerName(e.target.value)}
-            className="input"
-          />
-        </div>
-        {recent.length > 0 && (
-          <div className="flex items-center gap-3 self-end">
-            <input
-              id={ids.attach}
-              type="checkbox"
-              checked={attach}
-              onChange={(e) => setAttach(e.target.checked)}
-              className="size-5 accent-foreground"
-            />
-            <label htmlFor={ids.attach}>
-              {t("grievance.attach")} ({recent.length})
-            </label>
-          </div>
-        )}
-        {documentEvidence && (
-          <div className="flex items-start justify-between gap-3 rounded-2xl bg-primary-pale p-4 sm:col-span-2">
-            <div>
-              <p className="font-semibold">📄 {t("grievance.docAttached")}</p>
-              <p className="mt-1 line-clamp-2 text-sm text-muted">{documentEvidence.replaceAll("*", "")}</p>
+    <div className={FEATURE_CONTAINER}>
+      <Panel>
+        <form onSubmit={onSubmit} className="flex flex-col gap-6">
+          <fieldset>
+            <legend className="mb-3 text-sm font-semibold">{t("grievance.type")}</legend>
+            <div className="flex flex-wrap gap-2">
+              {GRIEVANCE_TYPES.map((g) => (
+                <ChoiceChip key={g} icon={ISSUE_ICONS[g]} pressed={issueType === g} onClick={() => setIssueType(g)}>
+                  {t(`issue.${g}`)}
+                </ChoiceChip>
+              ))}
             </div>
-            <button type="button" onClick={() => setDocumentEvidence("")} className="btn-subtle">
-              {t("grievance.removeDoc")}
-            </button>
+          </fieldset>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor={ids.against} className="text-sm font-semibold">
+                {t("grievance.against")}
+              </Label>
+              <Input
+                id={ids.against}
+                value={against}
+                maxLength={100}
+                required
+                onChange={(e) => setAgainst(e.target.value)}
+                placeholder={t("grievance.againstPlaceholder")}
+                className={INPUT}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor={ids.name} className="text-sm font-semibold">
+                {t("grievance.name")}
+              </Label>
+              <Input
+                id={ids.name}
+                value={workerName}
+                maxLength={80}
+                autoComplete="name"
+                onChange={(e) => setWorkerName(e.target.value)}
+                className={INPUT}
+              />
+            </div>
           </div>
-        )}
-        <div className="sm:col-span-2">
-          {isStreaming ? (
-            <button type="button" onClick={stop} className="btn-secondary">
-              {t("common.stop")}
-            </button>
-          ) : (
-            <button type="submit" disabled={!against.trim() || !details.trim()} className="btn-primary">
-              ✍️ {t("grievance.draft")}
-            </button>
+
+          <PromptField
+            id={ids.details}
+            label={t("grievance.details")}
+            value={details}
+            onValueChange={setDetails}
+            placeholder={t("grievance.detailsPlaceholder")}
+            maxLength={2000}
+            rows={4}
+            required
+          />
+
+          {recentCount > 0 && (
+            <label
+              htmlFor={ids.attach}
+              className="flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl border border-border px-4 py-3 transition-colors hover:border-foreground has-[:checked]:border-foreground has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring"
+            >
+              <input
+                id={ids.attach}
+                type="checkbox"
+                checked={attach}
+                onChange={(e) => setAttach(e.target.checked)}
+                className="size-5 shrink-0 cursor-pointer accent-primary"
+              />
+              <span className="flex-1 text-sm font-medium">
+                {t("grievance.attach")} ({recentCount})
+              </span>
+            </label>
           )}
-        </div>
-      </form>
+
+          {documentEvidence && (
+            <div className="flex items-start gap-3 rounded-2xl bg-primary-pale p-4">
+              <FileText className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold">{t("grievance.docAttached")}</p>
+                <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                  {documentEvidence.replaceAll("*", "")}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setDocumentEvidence("")}
+                className="h-11 shrink-0 gap-1.5 rounded-full px-3"
+              >
+                <X className="size-4" aria-hidden />
+                {t("grievance.removeDoc")}
+              </Button>
+            </div>
+          )}
+
+          <ActionBar>
+            <SubmitOrStop
+              streaming={isStreaming}
+              onStop={stop}
+              disabled={!against.trim() || !details.trim()}
+              icon={PenLine}
+            >
+              {t("grievance.draft")}
+            </SubmitOrStop>
+          </ActionBar>
+        </form>
+      </Panel>
       {status !== "idle" && (
         <AnswerPanel text={text} status={status} error={error} downloadName="complaint-letter.txt" />
       )}

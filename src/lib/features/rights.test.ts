@@ -43,6 +43,7 @@ describe("connected flows", () => {
       against: "Uber",
       details: "Blocked",
       documentEvidence: "Notice says account suspended on 12 Oct",
+      attachEarnings: false,
       language: "en",
     });
     expect("prompt" in p && p.prompt).toContain("Notice says account suspended");

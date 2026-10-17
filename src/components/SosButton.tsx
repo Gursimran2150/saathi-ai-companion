@@ -1,72 +1,70 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Loader2, MapPin, Phone, Siren } from "lucide-react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { HELPLINES } from "@/data/helplines";
 import { useLanguage } from "./LanguageProvider";
 
-type LocationState = { kind: "idle" } | { kind: "loading" } | { kind: "error" };
+type LocationState = "idle" | "loading" | "error";
 
-/** Floating emergency button: one tap to 112, helplines, and sharing the current location. */
-export function SosButton() {
+/** Emergency help: one tap to 112, verified helplines, and sharing the current location. */
+export function SosButton({ className = "" }: { className?: string }) {
   const { t } = useLanguage();
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const [location, setLocation] = useState<LocationState>({ kind: "idle" });
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    const reset = () => setLocation({ kind: "idle" });
-    dialog?.addEventListener("close", reset);
-    return () => dialog?.removeEventListener("close", reset);
-  }, []);
+  const [location, setLocation] = useState<LocationState>("idle");
 
   function shareLocation() {
-    if (!navigator.geolocation) return setLocation({ kind: "error" });
-    setLocation({ kind: "loading" });
+    if (!navigator.geolocation) return setLocation("error");
+    setLocation("loading");
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
         const url = `https://maps.google.com/?q=${coords.latitude.toFixed(5)},${coords.longitude.toFixed(5)}`;
         const text = `I need help. My location: ${url}`;
-        setLocation({ kind: "idle" });
-        if (navigator.share) {
-          await navigator.share({ title: "SOS", text }).catch(() => undefined);
-        } else {
-          window.location.href = `sms:?&body=${encodeURIComponent(text)}`;
-        }
+        setLocation("idle");
+        if (navigator.share) await navigator.share({ title: "SOS", text }).catch(() => undefined);
+        else window.location.href = `sms:?&body=${encodeURIComponent(text)}`;
       },
-      () => setLocation({ kind: "error" }),
+      () => setLocation("error"),
       { enableHighAccuracy: true, timeout: 10_000 },
     );
   }
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => dialogRef.current?.showModal()}
-        aria-haspopup="dialog"
-        className="fixed bottom-5 right-5 z-40 flex size-16 items-center justify-center rounded-full bg-danger text-lg font-black text-white shadow-lg focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-danger"
-      >
-        {t("sos.label")}
-      </button>
-      <dialog
-        ref={dialogRef}
-        aria-labelledby="sos-title"
-        className="m-auto w-[min(92vw,28rem)] rounded-3xl bg-background p-6 text-foreground backdrop:bg-black/60"
-      >
-        <h2 id="sos-title" className="display text-2xl">
-          {t("sos.title")}
-        </h2>
-        <div className="mt-4 flex flex-col gap-3">
+    <Dialog onOpenChange={() => setLocation("idle")}>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          className={`inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full bg-[#c13515] px-4 text-sm font-bold text-white shadow-sm hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${className}`}
+        >
+          <Siren className="size-4" aria-hidden="true" />
+          {t("sos.label")}
+        </button>
+      </DialogTrigger>
+      <DialogContent className="rounded-3xl sm:max-w-md">
+        <DialogTitle className="text-2xl">{t("sos.title")}</DialogTitle>
+        <DialogDescription className="sr-only">{t("safety.helplines")}</DialogDescription>
+        <div className="flex flex-col gap-3">
           <a
             href="tel:112"
-            className="flex min-h-14 items-center justify-center rounded-3xl bg-danger text-xl font-black text-white"
+            className="flex min-h-14 items-center justify-center gap-2 rounded-full bg-[#c13515] text-lg font-bold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
-            📞 {t("sos.call")}
+            <Phone className="size-5" aria-hidden="true" /> {t("sos.call")}
           </a>
-          <button type="button" onClick={shareLocation} disabled={location.kind === "loading"} className="btn-primary">
-            📍 {location.kind === "loading" ? t("sos.sharing") : t("sos.share")}
-          </button>
-          {location.kind === "error" && (
+          <Button
+            variant="outline"
+            onClick={shareLocation}
+            disabled={location === "loading"}
+            className="h-12 rounded-full text-base"
+          >
+            {location === "loading" ? (
+              <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+            ) : (
+              <MapPin className="size-5" aria-hidden="true" />
+            )}
+            {location === "loading" ? t("sos.sharing") : t("sos.share")}
+          </Button>
+          {location === "error" && (
             <p role="alert" className="text-danger">
               {t("sos.locError")}
             </p>
@@ -74,18 +72,18 @@ export function SosButton() {
           <ul className="grid grid-cols-2 gap-2">
             {HELPLINES.filter((h) => h.number !== "112").map((h) => (
               <li key={h.number}>
-                <a href={`tel:${h.number}`} className="flex flex-col rounded-2xl bg-surface-muted px-3 py-2">
-                  <span className="text-lg font-black tabular-nums">{h.number}</span>
-                  <span className="text-xs text-muted">{h.label}</span>
+                <a
+                  href={`tel:${h.number}`}
+                  className="flex h-full flex-col rounded-2xl bg-surface-muted px-3 py-2 hover:bg-surface-strong focus-visible:outline-2 focus-visible:outline-ring"
+                >
+                  <span className="text-lg font-bold tabular-nums">{h.number}</span>
+                  <span className="text-xs text-muted-foreground">{h.label}</span>
                 </a>
               </li>
             ))}
           </ul>
-          <form method="dialog">
-            <button className="btn-secondary w-full">{t("sos.close")}</button>
-          </form>
         </div>
-      </dialog>
-    </>
+      </DialogContent>
+    </Dialog>
   );
 }

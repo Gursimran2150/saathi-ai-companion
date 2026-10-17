@@ -20,4 +20,20 @@ describe("SimpleMarkdown", () => {
     const { container } = render(<SimpleMarkdown text={'<img src=x onerror="alert(1)">'} />);
     expect(container.querySelector("img")).toBeNull();
   });
+
+  it("renders https markdown links as safe external anchors", () => {
+    render(<SimpleMarkdown text={"- Register at [eshram.gov.in](https://eshram.gov.in) with **Aadhaar**"} />);
+    const link = screen.getByRole("link", { name: "eshram.gov.in" });
+    expect(link).toHaveAttribute("href", "https://eshram.gov.in/");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(screen.getByText("Aadhaar").tagName).toBe("STRONG");
+  });
+
+  it("renders non-https links as plain text", () => {
+    render(<SimpleMarkdown text={"[click me](javascript:alert(1)) and [plain](http://example.com)"} />);
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(screen.getByText(/click me/)).toBeInTheDocument();
+    expect(screen.getByText(/plain/)).toBeInTheDocument();
+  });
 });

@@ -1,6 +1,8 @@
 "use client";
 
+import { ALargeSmall } from "lucide-react";
 import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useLanguage } from "./LanguageProvider";
 
@@ -16,16 +18,15 @@ export function LargeTextToggle() {
   }, [large]);
 
   return (
-    <button
-      type="button"
+    <Button
+      variant={large ? "default" : "ghost"}
+      size="icon"
       aria-pressed={large}
+      aria-label={t("a11y.largeText")}
       onClick={() => setLarge(!large)}
-      className="btn-subtle aria-pressed:bg-foreground aria-pressed:text-background"
+      className="size-11 rounded-full"
     >
-      <span aria-hidden="true" className="font-black">
-        A+
-      </span>
-      <span className="sr-only sm:not-sr-only">{t("a11y.largeText")}</span>
-    </button>
+      <ALargeSmall className="size-5" aria-hidden="true" />
+    </Button>
   );
 }

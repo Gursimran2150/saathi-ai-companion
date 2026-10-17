@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getModel = vi.fn();
 vi.mock("@/lib/ai/provider", () => ({ getModel: () => getModel() }));
+vi.mock("@/lib/auth/session", () => ({
+  requireUser: async () => ({ ok: true, user: { id: `u-${Math.random()}`, name: "A", email: "a@b.co", isDemo: true } }),
+}));
 
 function modelReturning(json: unknown) {
   return new MockLanguageModelV4({

@@ -2,7 +2,9 @@
 
 > A multilingual GenAI assistant for delivery partners, drivers and daily-wage workers. It helps them track earnings, stay safe, find welfare schemes, understand documents, and draft complaints, in 7 Indian languages (English, Hindi, Punjabi, Bengali, Marathi, Tamil, Telugu), by typing or speaking, with every answer readable aloud.
 
-**Live demo:** https://saathi-gigworker-ai.vercel.app · **Demo video:** https://VIDEO-LINK
+**Live demo:** https://saathi-gigworker-ai.vercel.app
+
+> **Evaluator access:** tap **"Try instantly as a demo user"** on the login screen (creates a private, isolated test account), or log in with **`demo@saathi.app` / `saathi-demo-2026`**. · **Demo video:** https://VIDEO-LINK
 
 ![Home](docs/screenshots/home-desktop.png)
 
@@ -21,6 +23,8 @@ Saathi puts six connected AI tools behind one simple, mobile-first interface:
 | **Rights & schemes**  | Enters age, income and work type (all optional)                      | A deterministic filter picks eligible **real** schemes (e-Shram, PM-SYM, APY, PMJJBY, PMSBY, PM-JAY, PM SVANidhi, Code on Social Security). The AI explains only those, with official links and steps to apply |
 | **Document helper**   | Uploads a photo or PDF of a notice, form or payslip                  | A multimodal model explains what it is, the key points, deadlines and next steps, and masks ID numbers                                                                                                         |
 | **Complaint drafter** | Describes the problem and who it's against                           | Drafts a formal complaint in their language plus English, and can attach their earnings log as evidence. The worker can copy or download it                                                                    |
+
+**An AI assistant at the centre.** The home screen is a chat (like Claude or ChatGPT) with persistent, per-user history. The assistant **calls tools**: say _"aaj 14 delivery, 920 mile, petrol 180"_ and it saves the entry to your log, ask _"how much did I earn this week?"_ and it reads your data, ask about schemes or rights and it pulls the verified data. Every specialised tool is one tap away in the sidebar or drawer.
 
 **How the features connect:**
 
@@ -62,11 +66,16 @@ flowchart LR
   UI <--> LS[(localStorage: profile + earnings log)]
 ```
 
-Privacy by design: there are no accounts and no database. The profile and earnings log stay in the worker's browser and are sent to the server only when a feature needs them.
+**Accounts and data:** email/password sign-up, plus a one-tap demo. Sessions are signed JWTs in an `HttpOnly; SameSite=Lax; Secure` cookie. Each worker's profile, earnings and chat history live in **Neon Postgres** (Vercel Marketplace). Every query is parameterised and scoped by the session's user id ([`repo.ts`](src/lib/db/repo.ts)), and the schema is in [`db/schema.sql`](db/schema.sql).
 
 ## Security
 
 - API keys stay server-side only (`server-only` modules). Env vars are validated with zod.
+- Passwords are hashed with **scrypt** (per-user salt) and checked in constant time. Login errors are generic, so accounts can't be enumerated.
+- Session JWT (HS256, `jose`) sits in an HttpOnly, SameSite=Lax, Secure cookie. Pages are guarded in `proxy.ts`, and **every API route re-checks the session** (`requireUser`).
+- CSRF defence: mutations need a same-origin `Origin` header, on top of SameSite cookies.
+- Data isolation: every SQL query is parameterised and filtered by the session user id, and the AI tools are bound to that user.
+- Rate limiting per user (falling back to per IP) on AI and auth routes.
 - Every request body is validated with zod schemas, with length and size caps, a file-type allowlist, and a 3 MB upload limit.
 - Per-IP rate limiting on all AI routes (`429` + `Retry-After`).
 - Prompt-injection defence: user text is wrapped in `<user_input>`, and wrapper-breaking tags are stripped. The system prompt treats it as data, forbids revealing the prompt, and forbids asking for OTPs or bank details.
@@ -76,13 +85,18 @@ Privacy by design: there are no accounts and no database. The profile and earnin
 
 ## Efficiency
 
-- Streaming responses, so the first words appear almost immediately.
+- Streaming responses, so the first words appear almost immediately, with shimmer skeletons while waiting.
+- Language dictionaries are **code-split**: users download only the language they pick.
+- Photos are **compressed in the browser** (max 1600px JPEG) before upload, which cuts payload and model latency.
+- The server loads earnings from the DB for insights and complaints instead of the client posting the whole log.
+- SWR caching with optimistic updates (no refetch after save or delete), and chat turns are written in a single SQL round-trip.
+- The Neon HTTP driver needs no connection pool to warm up on serverless.
 - All pages are statically prerendered. Only the API routes run on demand, in the Mumbai region close to users.
 - Compact prompts: the earnings log is condensed and only the matched schemes are sent.
 
 ## Accessibility
 
-- Full UI in 7 Indian languages, with a test that enforces every language has every string. `<html lang>` updates with the selected language.
+- Light / dark / system **theme toggle**, plus a full UI in 7 Indian languages, with a test that enforces every language has every string. `<html lang>` updates with the selected language.
 - Voice input on every free-text field, and read-aloud on every answer.
 - Semantic landmarks, a skip link, labelled inputs, `aria-live` streaming output, `role="alert"` errors, `aria-pressed` toggles, and an accessible data table behind the chart.
 - Tap targets of at least 44–48px, visible focus rings, high-contrast Wise-inspired design system from [DESIGN.md](DESIGN.md), a Large text mode, dark mode, and reduced-motion support.

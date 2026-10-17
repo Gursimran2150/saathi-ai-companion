@@ -3,7 +3,7 @@ import { helplinesContext } from "@/data/helplines";
 import { rightsContext } from "@/data/rights";
 import { buildSystemPrompt, wrapUserInput } from "@/lib/ai/prompts";
 import type { StreamPrompt } from "@/lib/ai/stream-route";
-import { byPlatform, daysAgo, formatLogForPrompt, summarize } from "@/lib/features/earnings";
+import { byPlatform, daysAgo, formatLogForPrompt, summarize, type EarningEntry } from "@/lib/features/earnings";
 import type {
   documentRequestSchema,
   earningsInsightsRequestSchema,
@@ -26,11 +26,10 @@ export function earningsParsePrompt({ today, language }: z.infer<typeof earnings
   });
 }
 
-export function earningsInsightsPrompt({
-  entries,
-  today,
-  language,
-}: z.infer<typeof earningsInsightsRequestSchema>): StreamPrompt {
+export function earningsInsightsPrompt(
+  { today, language }: z.infer<typeof earningsInsightsRequestSchema>,
+  entries: readonly EarningEntry[],
+): StreamPrompt {
   const week = summarize(entries, daysAgo(6, new Date(`${today}T12:00:00`)));
   const all = summarize(entries);
   return {
@@ -88,7 +87,10 @@ export function documentPrompt({
   };
 }
 
-export function grievancePrompt(input: z.infer<typeof grievanceRequestSchema>): StreamPrompt {
+export function grievancePrompt(
+  input: z.infer<typeof grievanceRequestSchema>,
+  earningsEvidence?: string,
+): StreamPrompt {
   const lang = getLanguage(input.language);
   const bilingual = input.language !== "en";
   const facts = [
@@ -101,7 +103,7 @@ export function grievancePrompt(input: z.infer<typeof grievanceRequestSchema>): 
       role: `${PERSONA} Draft a formal, polite but firm complaint the worker can send. Structure: Subject line, To (suggest the right recipient: the platform's grievance officer/support, and as escalation the local Labour Commissioner, or police/cyber cell 1930 if relevant), body with facts in order, the specific resolution requested with a deadline (e.g. 7 days), and sign-off. Use only facts provided; put placeholders like [Date] or [Partner ID] for anything missing. ${bilingual ? `Write the full letter in ${lang.label} first, then a line "---", then the same letter in English.` : "Write it in English."} After the letter, add 2 short tips on where to send it and what proof to attach.`,
       language: input.language,
     }),
-    prompt: `${facts}\n\nWhat happened:\n${wrapUserInput(input.details)}${input.earningsEvidence ? `\n\nEarnings records from the worker's log (evidence):\n${wrapUserInput(input.earningsEvidence)}` : ""}${input.documentEvidence ? `\n\nSummary of a related document the worker uploaded (evidence):\n${wrapUserInput(input.documentEvidence)}` : ""}`,
+    prompt: `${facts}\n\nWhat happened:\n${wrapUserInput(input.details)}${earningsEvidence ? `\n\nEarnings records from the worker's log (evidence):\n${wrapUserInput(earningsEvidence)}` : ""}${input.documentEvidence ? `\n\nSummary of a related document the worker uploaded (evidence):\n${wrapUserInput(input.documentEvidence)}` : ""}`,
   };
 }
 

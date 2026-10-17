@@ -1,6 +1,8 @@
 "use client";
 
+import { Check, Copy, Download, Info, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { getLanguage } from "@/lib/i18n";
 import { AiResponse } from "./AiResponse";
 import { useLanguage } from "./LanguageProvider";
@@ -13,6 +15,8 @@ interface AnswerPanelProps {
   downloadName?: string;
 }
 
+const ACTION = "h-11 gap-2 rounded-full px-4 text-sm font-medium";
+
 /** AI answer with Listen (text-to-speech), Copy and optional Download actions. */
 export function AnswerPanel({ text, status, error, downloadName }: AnswerPanelProps) {
   const { t, language } = useLanguage();
@@ -22,6 +26,12 @@ export function AnswerPanel({ text, status, error, downloadName }: AnswerPanelPr
   const plain = text.replaceAll("**", "");
 
   useEffect(() => () => window.speechSynthesis?.cancel(), []);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(timer);
+  }, [copied]);
 
   function toggleSpeak() {
     const synth = window.speechSynthesis;
@@ -44,7 +54,6 @@ export function AnswerPanel({ text, status, error, downloadName }: AnswerPanelPr
     try {
       await navigator.clipboard.writeText(plain);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
       setCopied(false);
     }
@@ -60,27 +69,41 @@ export function AnswerPanel({ text, status, error, downloadName }: AnswerPanelPr
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <AiResponse text={text} status={status} error={error} emptyHint={t("common.answerHint")} />
+    <div className="flex flex-col gap-3 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2">
+      <AiResponse
+        text={text}
+        status={status}
+        error={error}
+        emptyHint={t("common.answerHint")}
+        thinkingLabel={t("chat.thinking")}
+      />
       {ready && (
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={toggleSpeak} aria-pressed={speaking} className="btn-subtle">
-            {speaking ? t("common.stopListening") : `🔊 ${t("common.listen")}`}
-          </button>
-          <button type="button" onClick={copy} className="btn-subtle">
-            {copied ? `✓ ${t("common.copied")}` : t("common.copy")}
-          </button>
+          <Button type="button" variant="outline" onClick={toggleSpeak} aria-pressed={speaking} className={ACTION}>
+            {speaking ? <VolumeX aria-hidden /> : <Volume2 aria-hidden />}
+            {speaking ? t("common.stopListening") : t("common.listen")}
+          </Button>
+          <Button type="button" variant="outline" onClick={copy} className={ACTION}>
+            {copied ? <Check className="text-success" aria-hidden /> : <Copy aria-hidden />}
+            {copied ? t("common.copied") : t("common.copy")}
+          </Button>
           {downloadName && (
-            <button type="button" onClick={download} className="btn-subtle">
+            <Button type="button" variant="outline" onClick={download} className={ACTION}>
+              <Download aria-hidden />
               {t("common.download")}
-            </button>
+            </Button>
           )}
           <span role="status" className="sr-only">
             {copied ? t("common.copied") : ""}
           </span>
         </div>
       )}
-      {ready && <p className="text-xs text-muted">{t("common.aiNote")}</p>}
+      {ready && (
+        <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+          <Info className="mt-px size-3.5 shrink-0" aria-hidden />
+          {t("common.aiNote")}
+        </p>
+      )}
     </div>
   );
 }

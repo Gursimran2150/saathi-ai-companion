@@ -1,10 +1,14 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { hardNavigate } from "@/lib/navigation";
 
 type Status = "idle" | "streaming" | "done" | "error";
 
-/** POSTs JSON to a streaming text endpoint and exposes the text as it arrives. */
+/**
+ * POSTs JSON to a streaming text endpoint and exposes the text as it arrives.
+ * `run` resolves with the full text (or null on error/abort) so callers can persist it.
+ */
 export function useStreamingText(endpoint: string) {
   const [text, setText] = useState("");
   const [status, setStatus] = useState<Status>("idle");
@@ -13,8 +17,14 @@ export function useStreamingText(endpoint: string) {
 
   const stop = useCallback(() => controllerRef.current?.abort(), []);
 
+  const reset = useCallback(() => {
+    setText("");
+    setError(null);
+    setStatus("idle");
+  }, []);
+
   const run = useCallback(
-    async (body: unknown) => {
+    async (body: unknown): Promise<string | null> => {
       controllerRef.current?.abort();
       const controller = new AbortController();
       controllerRef.current = controller;
@@ -29,6 +39,7 @@ export function useStreamingText(endpoint: string) {
           body: JSON.stringify(body),
           signal: controller.signal,
         });
+        if (res.status === 401) hardNavigate("/login");
         if (!res.ok || !res.body) {
           const data = (await res.json().catch(() => null)) as { error?: string } | null;
           throw new Error(data?.error ?? "Something went wrong. Please try again.");
@@ -45,17 +56,19 @@ export function useStreamingText(endpoint: string) {
         }
         if (!received.trim()) throw new Error("The AI returned an empty answer. Please try again.");
         setStatus("done");
+        return received;
       } catch (err) {
         if (controller.signal.aborted) {
           setStatus("done");
-          return;
+          return null;
         }
         setError(err instanceof Error ? err.message : "Something went wrong.");
         setStatus("error");
+        return null;
       }
     },
     [endpoint],
   );
 
-  return { text, status, error, run, stop, isStreaming: status === "streaming" };
+  return { text, status, error, run, stop, reset, isStreaming: status === "streaming" };
 }

@@ -1,17 +1,20 @@
 import { generateText, Output } from "ai";
-import { aiErrorResponse, enforceRateLimit } from "@/lib/ai/guard";
+import { aiAbortSignal, aiErrorResponse, enforceRateLimit } from "@/lib/ai/guard";
 import { wrapUserInput } from "@/lib/ai/prompts";
 import { getModel } from "@/lib/ai/provider";
 import { extractedEarningSchema } from "@/lib/features/earnings";
 import { earningsParsePrompt } from "@/lib/features/prompts";
 import { earningsParseRequestSchema } from "@/lib/features/requests";
+import { requireUser } from "@/lib/auth/session";
 import { parseJsonBody } from "@/lib/security/http";
 
 export const maxDuration = 30;
 
 /** Turns a free-text or spoken note into a structured earnings entry. */
 export async function POST(request: Request) {
-  const limited = enforceRateLimit(request);
+  const auth = await requireUser(request);
+  if (!auth.ok) return auth.response;
+  const limited = enforceRateLimit(request, auth.user.id);
   if (limited) return limited;
 
   const body = await parseJsonBody(request, earningsParseRequestSchema);
@@ -25,7 +28,7 @@ export async function POST(request: Request) {
       prompt: wrapUserInput(body.data.text),
       output: Output.object({ schema: extractedEarningSchema }),
       maxRetries: 2,
-      abortSignal: request.signal,
+      abortSignal: aiAbortSignal(request),
     });
     return Response.json({ entry: output }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {

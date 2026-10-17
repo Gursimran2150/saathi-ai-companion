@@ -16,19 +16,16 @@ describe("feature prompts", () => {
   });
 
   it("asks for a bilingual letter in non-English languages", () => {
-    const base = { issueType: "unpaid_payout", against: "Swiggy", details: "Not paid" } as const;
+    const base = { issueType: "unpaid_payout", against: "Swiggy", details: "Not paid", attachEarnings: false } as const;
     expect(grievancePrompt({ ...base, language: "pa" }).system).toContain("then the same letter in English");
     expect(grievancePrompt({ ...base, language: "en" }).system).not.toContain("then the same letter in English");
   });
 
   it("includes earnings evidence when attached", () => {
-    const p = grievancePrompt({
-      issueType: "wage_theft",
-      against: "Contractor",
-      details: "Paid less",
-      earningsEvidence: "2026-10-01 | gross ₹500",
-      language: "en",
-    });
+    const p = grievancePrompt(
+      { issueType: "wage_theft", against: "Contractor", details: "Paid less", attachEarnings: true, language: "en" },
+      "2026-10-01 | gross ₹500",
+    );
     expect("prompt" in p && p.prompt).toContain("gross ₹500");
   });
 

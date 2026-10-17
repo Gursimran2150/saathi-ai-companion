@@ -44,38 +44,74 @@ export function parseBlocks(source: string): Block[] {
   return blocks;
 }
 
-/** Renders **bold** spans as React nodes (no HTML injection). */
+const INLINE = /(\*\*[^*]+\*\*|\[[^\]\n]+\]\([^)\s]+\))/g;
+const LINK = /^\[([^\]\n]+)\]\(([^)\s]+)\)$/;
+
+/** Only absolute https URLs become links; anything else (javascript:, data:, relative) stays plain text. */
+export function safeHref(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" ? parsed.href : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Renders **bold** spans and [label](https://…) links as React nodes (no HTML injection). */
 function inline(text: string): ReactNode[] {
-  return text
-    .split(/(\*\*[^*]+\*\*)/g)
-    .map((part, i) =>
-      part.startsWith("**") && part.endsWith("**") ? (
-        <strong key={i}>{part.slice(2, -2)}</strong>
+  return text.split(INLINE).map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
+      return (
+        <strong key={i} className="font-semibold">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    const link = LINK.exec(part);
+    if (link) {
+      const href = safeHref(link[2]);
+      return href ? (
+        <a
+          key={i}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-foreground underline decoration-primary/60 underline-offset-4 hover:decoration-primary focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        >
+          {link[1]}
+        </a>
       ) : (
-        <Fragment key={i}>{part}</Fragment>
-      ),
-    );
+        <Fragment key={i}>{link[1]}</Fragment>
+      );
+    }
+    return <Fragment key={i}>{part}</Fragment>;
+  });
 }
 
 export function SimpleMarkdown({ text }: { text: string }) {
   return (
-    <div className="flex flex-col gap-3 leading-relaxed">
+    <div className="flex flex-col gap-3 text-[0.975rem] leading-7 break-words">
       {parseBlocks(text).map((block, i) => {
         switch (block.kind) {
           case "heading":
             return (
-              <p key={i} className="text-lg font-bold">
+              <p key={i} className="pt-1 text-base font-semibold tracking-tight sm:text-lg">
                 {inline(block.text)}
               </p>
             );
           case "rule":
-            return <hr key={i} className="border-border" />;
+            return <hr key={i} className="my-1 border-border" />;
           case "list": {
             const List = block.ordered ? "ol" : "ul";
             return (
-              <List key={i} className={`flex flex-col gap-1 pl-6 ${block.ordered ? "list-decimal" : "list-disc"}`}>
+              <List
+                key={i}
+                className={`flex flex-col gap-1.5 pl-6 marker:font-semibold marker:text-primary ${block.ordered ? "list-decimal" : "list-disc"}`}
+              >
                 {block.items.map((item, j) => (
-                  <li key={j}>{inline(item)}</li>
+                  <li key={j} className="pl-1">
+                    {inline(item)}
+                  </li>
                 ))}
               </List>
             );

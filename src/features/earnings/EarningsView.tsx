@@ -1,192 +1,206 @@
 "use client";
 
-import { useCallback, useId, useState, type FormEvent } from "react";
+import { BarChart3, Clock, LoaderCircle, Receipt, ScanText, Sparkles, Square, TrendingUp, Wallet } from "lucide-react";
+import { useId, useMemo, useState, type FormEvent } from "react";
+import { toast } from "sonner";
 import { AnswerPanel } from "@/components/AnswerPanel";
+import { ActionBar } from "@/components/feature/ActionBar";
+import { Panel, SectionHeading } from "@/components/feature/Panel";
+import { PromptField } from "@/components/feature/PromptField";
+import { StatCard } from "@/components/feature/StatCard";
+import { FEATURE_CONTAINER, PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/feature/styles";
 import { useLanguage } from "@/components/LanguageProvider";
-import { MicButton } from "@/components/MicButton";
-import { useEarningsLog } from "@/hooks/useAppData";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useEarnings } from "@/hooks/useAppData";
 import { useStreamingText } from "@/hooks/useStreamingText";
 import { useToday } from "@/hooks/useToday";
-import {
-  byPlatform,
-  daysAgo,
-  netEarning,
-  summarize,
-  totalExpenses,
-  type EarningEntry,
-  type ExtractedEarning,
-} from "@/lib/features/earnings";
-
-const rupee = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
+import { api } from "@/lib/api-client";
+import { byPlatform, daysAgo, summarize, type ExtractedEarning } from "@/lib/features/earnings";
+import { getLanguage } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
+import { DraftCard } from "./DraftCard";
+import { EntryList } from "./EntryList";
+import { PlatformTable } from "./PlatformTable";
+import { dailyNet, rupee } from "./series";
+import { WeekChart } from "./WeekChart";
 
 export function EarningsView() {
   const { t, language } = useLanguage();
+  const locale = getLanguage(language).speechLocale;
   const inputId = useId();
-  const [log, setLog] = useEarningsLog();
+  const { entries, isLoading, add, remove } = useEarnings();
   const [note, setNote] = useState("");
   const [draft, setDraft] = useState<ExtractedEarning | null>(null);
   const [parsing, setParsing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
   const insights = useStreamingText("/api/earnings/insights");
-
-  const appendTranscript = useCallback((s: string) => setNote((n) => (n ? `${n} ${s}` : s)), []);
   const today = useToday();
-  const ref = today ? new Date(`${today}T12:00:00`) : undefined;
-  const week = summarize(today ? log : [], ref && daysAgo(6, ref));
+
+  // Derived views of the log, recomputed only when the entries change.
+  const stats = useMemo(() => {
+    if (!today) return null;
+    return {
+      week: summarize(entries, daysAgo(6, new Date(`${today}T12:00:00`))),
+      days: dailyNet(entries, today),
+      platforms: byPlatform(entries),
+      sorted: [...entries].sort((a, b) => b.date.localeCompare(a.date)),
+    };
+  }, [entries, today]);
 
   async function onParse(e: FormEvent) {
     e.preventDefault();
-    if (!note.trim() || !today) return;
+    if (!note.trim() || !today || parsing) return;
     setParsing(true);
     setParseError(null);
     setDraft(null);
     try {
-      const res = await fetch("/api/earnings/parse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: note, today, language }),
+      const { entry } = await api.post<{ entry: ExtractedEarning }>("/api/earnings/parse", {
+        text: note,
+        today,
+        language,
       });
-      const data = (await res.json()) as { entry?: ExtractedEarning; error?: string };
-      if (!res.ok || !data.entry) throw new Error(data.error ?? "Could not read the note.");
-      setDraft(data.entry);
+      setDraft(entry);
     } catch (err) {
-      setParseError(err instanceof Error ? err.message : "Could not read the note.");
+      setParseError(err instanceof Error ? err.message : t("toast.error"));
     } finally {
       setParsing(false);
     }
   }
 
-  function saveDraft() {
-    if (!draft) return;
-    const entry: EarningEntry = { ...draft, id: crypto.randomUUID() };
-    setLog([entry, ...log].slice(0, 500));
-    setDraft(null);
-    setNote("");
+  async function saveDraft() {
+    if (!draft || saving) return;
+    setSaving(true);
+    try {
+      await add(draft);
+      toast.success(t("toast.saved"));
+      setDraft(null);
+      setNote("");
+    } catch {
+      toast.error(t("toast.error"));
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function remove(id: string) {
-    setLog(log.filter((e) => e.id !== id));
-  }
-
-  const lastSeven = Array.from({ length: ref ? 7 : 0 }, (_, i) => {
-    const date = daysAgo(6 - i, ref);
-    const net = log.filter((e) => e.date === date).reduce((s, e) => s + netEarning(e), 0);
-    return { date, net };
-  });
-  const platforms = byPlatform(log);
-  const maxNet = Math.max(1, ...lastSeven.map((d) => d.net));
+  const loading = isLoading || !stats;
 
   return (
-    <div className="flex flex-col gap-8">
-      <form onSubmit={onParse} className="card flex flex-col gap-3">
-        <label htmlFor={inputId} className="field-label text-lg">
-          {t("earnings.inputLabel")}
-        </label>
-        <div className="flex gap-2">
-          <textarea
+    <div className={FEATURE_CONTAINER}>
+      <Panel>
+        <form onSubmit={onParse} className="flex flex-col gap-4">
+          <PromptField
             id={inputId}
+            label={t("earnings.inputLabel")}
+            labelClassName="text-base"
             value={note}
-            onChange={(e) => setNote(e.target.value)}
+            onValueChange={setNote}
             placeholder={t("earnings.placeholder")}
             maxLength={1000}
-            rows={3}
             required
-            className="input"
           />
-          <MicButton onTranscript={appendTranscript} />
-        </div>
-        <div>
-          <button type="submit" disabled={!note.trim() || parsing} className="btn-primary">
-            {parsing ? t("earnings.reading") : t("earnings.read")}
-          </button>
-        </div>
-        {parseError && (
-          <p role="alert" className="text-danger">
-            {parseError}
-          </p>
-        )}
-      </form>
-
-      {draft && (
-        <section aria-labelledby="draft-title" aria-live="polite" className="card border-foreground">
-          <h2 id="draft-title" className="text-xl font-bold">
-            {t("earnings.confirm")}
-          </h2>
-          <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Stat label="Date" value={draft.date} />
-            <Stat label="Platform" value={draft.platform ?? "-"} />
-            <Stat label="Trips" value={draft.trips?.toString() ?? "-"} />
-            <Stat label="Hours" value={draft.hours?.toString() ?? "-"} />
-            <Stat label={t("earnings.gross")} value={rupee(draft.gross)} />
-            <Stat label={t("earnings.expenses")} value={rupee(totalExpenses(draft))} />
-            <Stat label={t("earnings.net")} value={rupee(netEarning(draft))} strong />
-          </dl>
-          {draft.expenses.length > 0 && (
-            <p className="mt-3 text-sm text-muted">
-              {draft.expenses.map((x) => `${x.label}: ${rupee(x.amount)}`).join(" · ")}
+          {parseError && (
+            <p role="alert" className="text-sm font-medium text-danger">
+              {parseError}
             </p>
           )}
-          {draft.note && <p className="mt-2 text-sm">{draft.note}</p>}
-          <div className="mt-4 flex gap-2">
-            <button type="button" onClick={saveDraft} className="btn-primary">
-              {t("earnings.save")}
-            </button>
-            <button type="button" onClick={() => setDraft(null)} className="btn-secondary">
-              {t("earnings.discard")}
-            </button>
-          </div>
-        </section>
+          <ActionBar>
+            <Button
+              type="submit"
+              disabled={!note.trim() || parsing || !today}
+              className={cn(PRIMARY_BUTTON, "max-sm:flex-1")}
+            >
+              {parsing ? <LoaderCircle className="motion-safe:animate-spin" aria-hidden /> : <ScanText aria-hidden />}
+              {parsing ? t("earnings.reading") : t("earnings.read")}
+            </Button>
+          </ActionBar>
+        </form>
+      </Panel>
+
+      {parsing && <DraftSkeleton />}
+      {draft && (
+        <DraftCard
+          draft={draft}
+          locale={locale}
+          saving={saving}
+          onSave={() => void saveDraft()}
+          onDiscard={() => setDraft(null)}
+        />
       )}
 
-      <section aria-labelledby="week-title">
-        <h2 id="week-title" className="display mb-4 text-2xl">
+      <section aria-labelledby="week-title" aria-busy={loading} className="flex flex-col gap-4">
+        <SectionHeading id="week-title" icon={TrendingUp}>
           {t("earnings.week")}
-        </h2>
-        <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label={t("earnings.net")} value={rupee(week.net)} strong boxed />
-          <Stat label={t("earnings.gross")} value={rupee(week.gross)} boxed />
-          <Stat label={t("earnings.expenses")} value={rupee(week.expenses)} boxed />
-          <Stat
-            label={t("earnings.perHour")}
-            value={week.avgNetPerHour === null ? "-" : rupee(week.avgNetPerHour)}
-            boxed
-          />
-        </dl>
-        <figure className="mt-4 rounded-2xl bg-surface-muted p-4">
-          <figcaption className="sr-only">Take-home per day, last 7 days</figcaption>
-          <div className="flex h-36 items-end gap-2" aria-hidden="true">
-            {lastSeven.map((d) => (
-              <div key={d.date} className="flex flex-1 flex-col items-center gap-1">
-                <span className="text-xs tabular-nums text-muted">{d.net ? rupee(d.net) : ""}</span>
-                <div
-                  className="w-full rounded-t-md bg-foreground"
-                  style={{ height: `${Math.max(2, (Math.max(0, d.net) / maxNet) * 100)}px` }}
-                />
-                <span className="text-xs text-muted">{d.date.slice(8)}</span>
-              </div>
-            ))}
-          </div>
-          <table className="sr-only">
-            <tbody>
-              {lastSeven.map((d) => (
-                <tr key={d.date}>
-                  <th scope="row">{d.date}</th>
-                  <td>{rupee(d.net)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </figure>
-        <div className="mt-4 flex flex-col gap-3">
+        </SectionHeading>
+        {loading ? (
+          <StatsSkeleton />
+        ) : (
+          <>
+            <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <StatCard
+                featured
+                icon={Wallet}
+                label={t("earnings.net")}
+                value={rupee(stats.week.net)}
+                className="col-span-2 lg:col-span-1"
+              />
+              <StatCard icon={TrendingUp} label={t("earnings.gross")} value={rupee(stats.week.gross)} />
+              <StatCard icon={Receipt} label={t("earnings.expenses")} value={rupee(stats.week.expenses)} />
+              <StatCard
+                icon={Clock}
+                label={t("earnings.perHour")}
+                value={stats.week.avgNetPerHour === null ? "–" : rupee(stats.week.avgNetPerHour)}
+                className="col-span-2 lg:col-span-1"
+              />
+            </dl>
+
+            <Panel>
+              <Tabs defaultValue="week" className="gap-5">
+                {stats.platforms.length > 1 && (
+                  <TabsList className="h-12 w-full rounded-full p-1 sm:w-fit">
+                    <TabsTrigger value="week" className="h-10 rounded-full px-4 text-sm">
+                      <BarChart3 aria-hidden />
+                      {t("earnings.week")}
+                    </TabsTrigger>
+                    <TabsTrigger value="platform" className="h-10 rounded-full px-4 text-sm">
+                      <Wallet aria-hidden />
+                      {t("earnings.byPlatform")}
+                    </TabsTrigger>
+                  </TabsList>
+                )}
+                <TabsContent value="week">
+                  {today && <WeekChart days={stats.days} today={today} locale={locale} />}
+                </TabsContent>
+                {stats.platforms.length > 1 && (
+                  <TabsContent value="platform">
+                    <PlatformTable platforms={stats.platforms} />
+                  </TabsContent>
+                )}
+              </Tabs>
+            </Panel>
+          </>
+        )}
+
+        <div className="flex flex-col gap-4">
           <div>
-            <button
-              type="button"
-              disabled={log.length === 0 || !today || insights.isStreaming}
-              onClick={() => today && void insights.run({ entries: log, today, language })}
-              className="btn-primary"
-            >
-              ✨ {t("earnings.insights")}
-            </button>
+            {insights.isStreaming ? (
+              <Button type="button" variant="outline" onClick={insights.stop} className={SECONDARY_BUTTON}>
+                <Square className="size-4 fill-current" aria-hidden />
+                {t("common.stop")}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                disabled={entries.length === 0 || !today}
+                onClick={() => today && void insights.run({ today, language })}
+                className={PRIMARY_BUTTON}
+              >
+                <Sparkles aria-hidden />
+                {t("earnings.insights")}
+              </Button>
+            )}
           </div>
           {insights.status !== "idle" && (
             <AnswerPanel text={insights.text} status={insights.status} error={insights.error} />
@@ -194,94 +208,69 @@ export function EarningsView() {
         </div>
       </section>
 
-      {platforms.length > 1 && (
-        <section aria-labelledby="platform-title">
-          <h2 id="platform-title" className="display mb-4 text-2xl">
-            {t("earnings.byPlatform")}
-          </h2>
-          <div className="overflow-x-auto rounded-3xl bg-surface-muted">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-border text-sm text-muted">
-                  <th scope="col" className="p-4">
-                    {t("earnings.platform")}
-                  </th>
-                  <th scope="col" className="p-4">
-                    {t("earnings.net")}
-                  </th>
-                  <th scope="col" className="p-4">
-                    {t("earnings.perTrip")}
-                  </th>
-                  <th scope="col" className="p-4">
-                    {t("earnings.perHour")}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {platforms.map((p, i) => (
-                  <tr key={p.platform} className="border-b border-border last:border-0">
-                    <th scope="row" className="p-4 font-semibold">
-                      {i === 0 && p.netPerHour !== null ? "🏆 " : ""}
-                      {p.platform}
-                    </th>
-                    <td className="p-4 tabular-nums">{rupee(p.net)}</td>
-                    <td className="p-4 tabular-nums">{p.netPerTrip === null ? "-" : rupee(p.netPerTrip)}</td>
-                    <td className="p-4 tabular-nums">{p.netPerHour === null ? "-" : rupee(p.netPerHour)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
-
-      <section aria-labelledby="log-title">
-        <h2 id="log-title" className="display mb-4 text-2xl">
+      <section aria-labelledby="log-title" aria-busy={loading} className="flex flex-col gap-4">
+        <SectionHeading id="log-title" icon={Receipt}>
           {t("earnings.log")}
-        </h2>
-        {log.length === 0 ? (
-          <p className="text-muted">{t("earnings.empty")}</p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {[...log]
-              .sort((a, b) => b.date.localeCompare(a.date))
-              .map((e) => (
-                <li
-                  key={e.id}
-                  className="flex items-center justify-between gap-3 rounded-xl bg-surface-muted px-4 py-3"
-                >
-                  <div>
-                    <p className="font-medium">
-                      {e.date} · {e.platform ?? "-"}
-                      {e.trips !== null && ` · ${e.trips} trips`}
-                    </p>
-                    <p className="text-sm text-muted">
-                      {rupee(e.gross)} − {rupee(totalExpenses(e))} ={" "}
-                      <strong className="text-foreground">{rupee(netEarning(e))}</strong>
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => remove(e.id)}
-                    aria-label={`${t("earnings.delete")} ${e.date}`}
-                    className="btn-subtle"
-                  >
-                    {t("earnings.delete")}
-                  </button>
-                </li>
-              ))}
-          </ul>
-        )}
+        </SectionHeading>
+        <Panel>
+          {loading ? (
+            <ListSkeleton />
+          ) : stats.sorted.length === 0 ? (
+            <p className="py-6 text-center text-muted-foreground">{t("earnings.empty")}</p>
+          ) : (
+            <EntryList entries={stats.sorted} locale={locale} onRemove={remove} />
+          )}
+        </Panel>
       </section>
     </div>
   );
 }
 
-function Stat({ label, value, strong, boxed }: { label: string; value: string; strong?: boolean; boxed?: boolean }) {
+function StatsSkeleton() {
   return (
-    <div className={boxed ? "rounded-2xl bg-surface-muted p-4" : undefined}>
-      <dt className="text-sm text-muted">{label}</dt>
-      <dd className={`tabular-nums ${strong ? "text-2xl font-bold" : "text-lg font-medium"}`}>{value}</dd>
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Skeleton className="col-span-2 h-24 rounded-2xl lg:col-span-1" />
+        <Skeleton className="h-24 rounded-2xl" />
+        <Skeleton className="h-24 rounded-2xl" />
+        <Skeleton className="col-span-2 h-24 rounded-2xl lg:col-span-1" />
+      </div>
+      <Skeleton className="h-64 rounded-3xl" />
+    </div>
+  );
+}
+
+function ListSkeleton() {
+  return (
+    <div className="flex flex-col gap-4">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="flex items-center gap-3">
+          <Skeleton className="size-11 rounded-full" />
+          <div className="flex flex-1 flex-col gap-2">
+            <Skeleton className="h-4 w-2/5 rounded-full" />
+            <Skeleton className="h-3 w-1/4 rounded-full" />
+          </div>
+          <Skeleton className="h-6 w-16 rounded-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DraftSkeleton() {
+  return (
+    <div aria-hidden="true" className="flex flex-col gap-4 rounded-3xl border border-border bg-card p-5 sm:p-6">
+      <Skeleton className="h-6 w-40 rounded-full" />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-12 rounded-xl" />
+        ))}
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        {[0, 1, 2].map((i) => (
+          <Skeleton key={i} className="h-16 rounded-2xl" />
+        ))}
+      </div>
     </div>
   );
 }

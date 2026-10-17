@@ -1,7 +1,9 @@
 "use client";
 
+import { Mic, Square } from "lucide-react";
 import { useSpeechInput } from "@/hooks/useSpeechInput";
 import { getLanguage } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { useLanguage } from "./LanguageProvider";
 
 interface MicButtonProps {
@@ -10,37 +12,43 @@ interface MicButtonProps {
 
 /** Voice input for a text field. Renders nothing where the browser lacks speech support. */
 export function MicButton({ onTranscript }: MicButtonProps) {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const { supported, listening, error, start, stop } = useSpeechInput(getLanguage(language).speechLocale, onTranscript);
 
   if (!supported) return null;
 
   return (
-    <>
+    <span className="relative inline-flex">
       <button
         type="button"
         onClick={listening ? stop : start}
         aria-pressed={listening}
-        aria-label={listening ? "Stop voice input" : "Start voice input"}
-        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-border bg-surface hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent aria-pressed:border-danger aria-pressed:text-danger"
+        aria-label={listening ? t("voice.stop") : t("voice.start")}
+        className={cn(
+          "relative inline-flex size-11 cursor-pointer items-center justify-center rounded-full border border-border bg-background text-foreground transition-colors hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+          "aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground",
+        )}
       >
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 24 24"
-          className="size-5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <rect x="9" y="3" width="6" height="11" rx="3" />
-          <path d="M5 11a7 7 0 0 0 14 0M12 18v3" strokeLinecap="round" />
-        </svg>
+        {listening && (
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 rounded-full bg-primary/40 motion-safe:animate-ping motion-reduce:hidden"
+          />
+        )}
+        {listening ? (
+          <Square className="relative size-4 fill-current" aria-hidden="true" />
+        ) : (
+          <Mic className="relative size-5" aria-hidden="true" />
+        )}
       </button>
       {error && (
-        <p role="alert" className="text-sm text-danger">
+        <p
+          role="alert"
+          className="absolute right-0 bottom-full z-10 mb-2 w-max max-w-60 rounded-xl bg-foreground px-3 py-2 text-xs font-medium text-background shadow-lg"
+        >
           {error}
         </p>
       )}
-    </>
+    </span>
   );
 }

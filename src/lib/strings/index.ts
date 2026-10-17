@@ -1,16 +1,26 @@
 import type { LanguageCode } from "@/lib/i18n";
-import { bn } from "./bn";
 import { en, type Dictionary, type StringKey } from "./en";
-import { hi } from "./hi";
-import { mr } from "./mr";
-import { pa } from "./pa";
-import { ta } from "./ta";
-import { te } from "./te";
 
-export type { StringKey } from "./en";
+export type { Dictionary, StringKey } from "./en";
+export { en };
 
-export const STRINGS: Record<LanguageCode, Dictionary> = { en, hi, pa, bn, mr, ta, te };
+/**
+ * Non-English dictionaries are code-split: the browser downloads only the language
+ * the worker picks (English ships with the app as the fallback).
+ */
+const loaders: Record<Exclude<LanguageCode, "en">, () => Promise<Dictionary>> = {
+  hi: () => import("./hi").then((m) => m.hi),
+  pa: () => import("./pa").then((m) => m.pa),
+  bn: () => import("./bn").then((m) => m.bn),
+  mr: () => import("./mr").then((m) => m.mr),
+  ta: () => import("./ta").then((m) => m.ta),
+  te: () => import("./te").then((m) => m.te),
+};
 
-export function translate(language: LanguageCode, key: StringKey): string {
-  return STRINGS[language]?.[key] || en[key];
+export function loadDictionary(language: LanguageCode): Promise<Dictionary> {
+  return language === "en" ? Promise.resolve(en) : loaders[language]();
+}
+
+export function translate(dictionary: Dictionary | undefined, key: StringKey): string {
+  return dictionary?.[key] || en[key];
 }

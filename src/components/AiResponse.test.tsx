@@ -13,10 +13,24 @@ describe("AiResponse", () => {
     expect(screen.getByRole("region", { name: "AI response" })).toHaveAttribute("aria-busy", "true");
   });
 
+  it("shows a shimmering thinking skeleton before the first token", () => {
+    render(<AiResponse text="" status="streaming" error={null} thinkingLabel="Saathi is thinking…" />);
+    const thinking = screen.getByTestId("ai-thinking");
+    expect(thinking.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThanOrEqual(3);
+    expect(screen.getByText("Saathi is thinking…")).toHaveClass("sr-only");
+  });
+
+  it("replaces the skeleton with text once tokens arrive", () => {
+    render(<AiResponse text="Stay safe" status="streaming" error={null} />);
+    expect(screen.queryByTestId("ai-thinking")).toBeNull();
+    expect(screen.getByRole("region", { name: "AI response" })).toHaveTextContent("Stay safe");
+  });
+
   it("renders streamed text in a live region", () => {
     render(<AiResponse text="Namaste" status="done" error={null} />);
     const region = screen.getByRole("region", { name: "AI response" });
     expect(region).toHaveAttribute("aria-live", "polite");
+    expect(region).toHaveAttribute("aria-busy", "false");
     expect(region).toHaveTextContent("Namaste");
   });
 
